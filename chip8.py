@@ -216,40 +216,45 @@ def execute_instruction(opcode, args):
     elif opcode == OP.RET:
         print("Return from subroutine.")
     elif opcode == OP.JP: 
-        old_pc = pc
-        pc = int(args, 16)
-        print("JUMP TO: ",pc)
-        pc = old_pc # TODO: delete
+        pass
     elif opcode == OP.CALL:
-        sp += 1
-        print('set sp to ',sp)
-        stack = pc
-        pc = args
-        print('set pc to ', args)
-        pc = old_pc # TODO: delete
+        pass
     elif opcode == OP.SE:
-        x, kk = args[0], args[1:]
-        if register[int(x, 16)] == int(kk, 16):
-            old_pc = pc
-            pc += 2
-            print('OP-SE: incrementing to', pc)
-            pc = old_pc # TODO: delete
+        pass
     elif opcode == OP.SNE:
-        x, kk = args[0], args[1:]
-        if register[int(x, 16)] != int(kk, 16):
-            old_pc = pc
-            pc += 2
-            print('OP-SNE: incrementing to', pc)
-            pc = old_pc # TODO: delete
+        pass
     elif opcode == OP.SE_XY:
-        print("SE XY, args: ", args)
-        # TODO: compack to implement
+        pass
     elif opcode == OP.LD:
-        x, kk = args[0], args[1:]
-        register[int(x, 16)] = int(kk, 16)
+        pass
     elif opcode == OP.ADD:
-        x, k = int(args[0], 16), int(args[1:], 16)
-        register[x] += k
+        pass
+    elif opcode == OP.LD_XY: 
+        pass
+    elif opcode == OP.OR_XY: 
+        pass
+    elif opcode == OP.AND_XY:
+        pass
+    elif opcode == OP.XOR_XY:
+        pass
+    elif opcode == OP.ADD_XY:
+        pass
+    elif opcode == OP.SUB_XY:
+        pass
+    elif opcode == OP.SHR:
+        pass
+    elif opcode == OP.SUBN:
+        pass
+    elif opcode == OP.SHL:
+        pass
+    elif opcode == OP.SNE_XY:
+        pass
+    elif opcode == OP.LD_IA:
+        pass
+    elif opcode == OP.JP_VA:
+        pass
+    elif opcode == OP.RND:
+        pass
 
 with open("IBM.ch8", "rb") as f:
     i = 512
