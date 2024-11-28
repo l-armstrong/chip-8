@@ -11,6 +11,7 @@ stack = [0]*16
 sp = -1 # Possible change to 0?
 pc = 512
 register = [0]*16 # Vx where x is a hexadecimal digit
+VF = 0 # Flag register?
 
 class OP(Enum):
     SYS = 0  # SYS addr
@@ -21,8 +22,21 @@ class OP(Enum):
     SE = 5
     SNE = 6 
     SE_XY = 7 # SE Vx, Xy
-    LD = 8
-    ADD = 9
+    LD = 8    # LD Vx, byte
+    ADD = 9   # ADD Vx, byte
+    LD_XY = 10 # LD Vx, Vy
+    OR_XY = 11 # OR Vx, Vy
+    AND_XY = 12 # AND Vx, Vy
+    XOR_XY = 13 # XOR XY
+    ADD_XY = 14 # ADD Vx, Vy
+    SUB_XY = 15
+    SHR = 16
+    SUBN = 17
+    SHL = 18
+    SNE_XY = 19
+    LD_IA = 20
+    JP_VA = 21
+    RND = 22
 
 # """
 # return (OPCODE, [NONE | ....])
@@ -100,6 +114,7 @@ class OP(Enum):
 return (OPCODE, [NONE | ....])
 """
 def decode_instruction(instruction):
+    global VF
     first_nibble = (0xF000 & instruction) >> 12
     second_nibble = (0x0F00 & instruction) >> 8
     third_nibble = (0x00F0 & instruction) >> 4
@@ -134,8 +149,63 @@ def decode_instruction(instruction):
     elif first_nibble == 0x7: 
         print("0x7:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         return (OP.ADD, nibbles)
-    # elif instruction.startswith("8"):
-    #     print(instruction)
+    elif first_nibble == 0x8:
+        if fourth_nibble == 0x0:
+            print("0x8_0:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            register[second_nibble] = register[third_nibble]
+        elif fourth_nibble == 0x1:
+            print("0x8_1:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            register[second_nibble] = register[second_nibble] | register[third_nibble]
+        elif fourth_nibble == 0x2:
+            print("0x8_2:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            register[second_nibble] = register[second_nibble] & register[third_nibble]     
+        elif fourth_nibble == 0x3:
+            print("0x8_3:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            register[second_nibble] = register[second_nibble] ^ register[third_nibble]  
+        elif fourth_nibble == 0x4:
+            print("0x8_4:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            vx, vy = register[second_nibble], register[third_nibble]
+            _sum = vx + vy
+            if (_sum > 255): VF = 1
+            else: VF = 0
+            register[second_nibble] = 0x0FF & _sum # only lowest 8 bits (1 byte) are kept
+        elif fourth_nibble == 0x5:
+            print("0x8_5:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            vx, vy = register[second_nibble], register[third_nibble]
+            difference = vx - vy
+            if (vx > vy): VF = 1
+            else: VF = 0
+            register[second_nibble] = difference
+        elif fourth_nibble == 0x6:
+            print("0x8_6:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            if (second_nibble & 0x01): VF = 1
+            else: VF = 0
+            register[second_nibble] = register[second_nibble] >> 1
+        elif fourth_nibble == 0x7:
+            print("0x8_7:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            vx, vy = register[second_nibble], register[third_nibble]
+            difference = vy - vx
+            if (vy > vx): VF = 1
+            else: VF = 0
+            register[second_nibble] = difference
+        elif fourth_nibble == 0xE:
+            print("0x8_E:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            if (second_nibble & 0x01): VF = 1
+            else: VF = 0
+            register[second_nibble] = register[second_nibble] << 1
+    elif first_nibble == 0x9:
+        print("0x9:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+        return (OP.SNE_XY, nibbles)
+        if register[second_nibble] != register[third_nibble]: pc += 2
+    elif first_nibble == 0xA:
+        print("0xA:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+        return (OP.LD_IA, nibbles)
+    elif first_nibble == 0xB:
+        print("0xB:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+        return (OP.JP_VA, nibbles)
+    elif first_nibble == 0xC:
+        print("0xC:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+        return (OP.RND, nibbles)
     return (None, None)
 
 def execute_instruction(opcode, args): 
@@ -190,7 +260,7 @@ with open("IBM.ch8", "rb") as f:
 while pc < len(memory):
     instuction = memory[pc:pc+2]
     pc += 2
-    print(instuction)
+    # print(instuction)
     if instuction == [b'', b'']: break
 
     # current_instuction = b"".join(instuction).hex()
