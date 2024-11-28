@@ -152,51 +152,33 @@ def decode_instruction(instruction):
     elif first_nibble == 0x8:
         if fourth_nibble == 0x0:
             print("0x8_0:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            register[second_nibble] = register[third_nibble]
+            return (OP.LD_XY, nibbles)
         elif fourth_nibble == 0x1:
             print("0x8_1:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            register[second_nibble] = register[second_nibble] | register[third_nibble]
+            return (OP.OR_XY, nibbles)
         elif fourth_nibble == 0x2:
             print("0x8_2:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            register[second_nibble] = register[second_nibble] & register[third_nibble]     
+            return (OP.AND_XY, nibbles)    
         elif fourth_nibble == 0x3:
             print("0x8_3:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            register[second_nibble] = register[second_nibble] ^ register[third_nibble]  
+            return (OP.XOR_XY, nibbles)
         elif fourth_nibble == 0x4:
             print("0x8_4:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            vx, vy = register[second_nibble], register[third_nibble]
-            _sum = vx + vy
-            if (_sum > 255): VF = 1
-            else: VF = 0
-            register[second_nibble] = 0x0FF & _sum # only lowest 8 bits (1 byte) are kept
+            return (OP.ADD_XY, nibbles)
         elif fourth_nibble == 0x5:
             print("0x8_5:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            vx, vy = register[second_nibble], register[third_nibble]
-            difference = vx - vy
-            if (vx > vy): VF = 1
-            else: VF = 0
-            register[second_nibble] = difference
+            return (OP.SUB_XY, nibbles)
         elif fourth_nibble == 0x6:
             print("0x8_6:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            if (second_nibble & 0x01): VF = 1
-            else: VF = 0
-            register[second_nibble] = register[second_nibble] >> 1
+            return (OP.SHR, nibbles)
         elif fourth_nibble == 0x7:
             print("0x8_7:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            vx, vy = register[second_nibble], register[third_nibble]
-            difference = vy - vx
-            if (vy > vx): VF = 1
-            else: VF = 0
-            register[second_nibble] = difference
+            return (OP.SUBN, nibbles)
         elif fourth_nibble == 0xE:
-            print("0x8_E:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
-            if (second_nibble & 0x01): VF = 1
-            else: VF = 0
-            register[second_nibble] = register[second_nibble] << 1
+            return (OP.SHL, nibbles)
     elif first_nibble == 0x9:
         print("0x9:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         return (OP.SNE_XY, nibbles)
-        if register[second_nibble] != register[third_nibble]: pc += 2
     elif first_nibble == 0xA:
         print("0xA:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         return (OP.LD_IA, nibbles)
@@ -211,44 +193,79 @@ def decode_instruction(instruction):
 def execute_instruction(opcode, args): 
     global pc
     global stack
-    if opcode == OP.CLS:
+    global VF
+    if len(args) == 5:
+        first_nibble, second_nibble, third_nibble, fourth_nibble, instruction = args
+    if opcode == OP.SYS:
+        print("SYS")
+    elif opcode == OP.CLS:
         print("Clear Display")
     elif opcode == OP.RET:
         print("Return from subroutine.")
     elif opcode == OP.JP: 
-        pass
+        instuction = args[-1]
+        print("Jump to location", instuction & 0x0FFF)
+        pc = instuction & 0x0FFF
     elif opcode == OP.CALL:
-        pass
+        print("Call subroutine")
+        sp += 1
+        stack[sp] = pc
+        pc = instuction & 0x0FFF
     elif opcode == OP.SE:
-        pass
+        print("Skip next instruciton if Vx = kk")
+        vx = register[args[1]]
+        if vx == (instuction & 0x0FF): pc += 2
     elif opcode == OP.SNE:
-        pass
+        print("Skip next instruciton if Vx != kk")
+        vx = register[args[1]]
+        if vx != (instuction & 0x0FF): pc += 2
     elif opcode == OP.SE_XY:
-        pass
+        print("Skip next instruciton if Vx = Vy")
+        vx = register[args[1]]
+        vy = register[args[2]]
+        if (vx == vy): pc += 2
     elif opcode == OP.LD:
-        pass
+        print("Set Vx = kk")
+        register[args[1]] = instuction & 0x0FF
     elif opcode == OP.ADD:
-        pass
+        print("Set Vx = Vx + kk")
+        register[args[1]] = register[args[1]] + (instuction & 0x0FF)
     elif opcode == OP.LD_XY: 
-        pass
+        register[second_nibble] = register[third_nibble]
     elif opcode == OP.OR_XY: 
-        pass
+        register[second_nibble] = register[second_nibble] | register[third_nibble]
     elif opcode == OP.AND_XY:
-        pass
+        register[second_nibble] = register[second_nibble] & register[third_nibble]
     elif opcode == OP.XOR_XY:
-        pass
+        register[second_nibble] = register[second_nibble] ^ register[third_nibble]  
     elif opcode == OP.ADD_XY:
-        pass
+        vx, vy = register[second_nibble], register[third_nibble]
+        _sum = vx + vy
+        if (_sum > 255): VF = 1
+        else: VF = 0
+        register[second_nibble] = 0x0FF & _sum # only lowest 8 bits (1 byte) are kept
     elif opcode == OP.SUB_XY:
-        pass
+        vx, vy = register[second_nibble], register[third_nibble]
+        difference = vx - vy
+        if (vx > vy): VF = 1
+        else: VF = 0
+        register[second_nibble] = difference
     elif opcode == OP.SHR:
-        pass
+        if (second_nibble & 0x01): VF = 1
+        else: VF = 0
+        register[second_nibble] = register[second_nibble] >> 1
     elif opcode == OP.SUBN:
-        pass
+        vx, vy = register[second_nibble], register[third_nibble]
+        difference = vy - vx
+        if (vy > vx): VF = 1
+        else: VF = 0
+        register[second_nibble] = difference
     elif opcode == OP.SHL:
-        pass
+        if (second_nibble & 0x01): VF = 1
+        else: VF = 0
+        register[second_nibble] = register[second_nibble] << 1
     elif opcode == OP.SNE_XY:
-        pass
+        if register[second_nibble] != register[third_nibble]: pc += 2
     elif opcode == OP.LD_IA:
         pass
     elif opcode == OP.JP_VA:
