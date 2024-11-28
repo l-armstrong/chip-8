@@ -190,7 +190,7 @@ with open("IBM.ch8", "rb") as f:
 while pc < len(memory):
     instuction = memory[pc:pc+2]
     pc += 2
-    # print(instuction)
+    print(instuction)
     if instuction == [b'', b'']: break
 
     # current_instuction = b"".join(instuction).hex()
