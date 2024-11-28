@@ -3,6 +3,7 @@ Chip-8 is a interpreted programming language.
 - takes up 512 bytes of memory
 """
 from enum import Enum
+import random
 
 max_memory = (1 << 12)
 memory = [b''] * (max_memory)  # 4096 addresses 
@@ -11,6 +12,7 @@ stack = [0]*16
 sp = -1 # Possible change to 0?
 pc = 512
 register = [0]*16 # Vx where x is a hexadecimal digit
+i_register = 0 # register I; store memory addresses; right most 12 bits are used
 VF = 0 # Flag register?
 
 class OP(Enum):
@@ -114,12 +116,11 @@ class OP(Enum):
 return (OPCODE, [NONE | ....])
 """
 def decode_instruction(instruction):
-    global VF
     first_nibble = (0xF000 & instruction) >> 12
     second_nibble = (0x0F00 & instruction) >> 8
     third_nibble = (0x00F0 & instruction) >> 4
     fourth_nibble = (0x000F & instruction) 
-    nibbles = (first_nibble, second_nibble, third_nibble, fourth_nibble)
+    nibbles = (first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
     if first_nibble == 0x0:
         print("0x0:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         if fourth_nibble == 0x0:
@@ -194,7 +195,11 @@ def execute_instruction(opcode, args):
     global pc
     global stack
     global VF
-    if len(args) == 5:
+    global i_register
+    # TODO: Change this
+    # first_nibble = second_nibble = third_nibble = fourth_nibble = instruction = None
+    # TODO: change this check
+    if args and len(args) == 5:
         first_nibble, second_nibble, third_nibble, fourth_nibble, instruction = args
     if opcode == OP.SYS:
         print("SYS")
@@ -203,22 +208,22 @@ def execute_instruction(opcode, args):
     elif opcode == OP.RET:
         print("Return from subroutine.")
     elif opcode == OP.JP: 
-        instuction = args[-1]
-        print("Jump to location", instuction & 0x0FFF)
-        pc = instuction & 0x0FFF
+        instruction = args[-1]
+        print("Jump to location", instruction & 0x0FFF)
+        pc = instruction & 0x0FFF
     elif opcode == OP.CALL:
         print("Call subroutine")
         sp += 1
         stack[sp] = pc
-        pc = instuction & 0x0FFF
+        pc = instruction & 0x0FFF
     elif opcode == OP.SE:
         print("Skip next instruciton if Vx = kk")
         vx = register[args[1]]
-        if vx == (instuction & 0x0FF): pc += 2
+        if vx == (instruction & 0x0FF): pc += 2
     elif opcode == OP.SNE:
         print("Skip next instruciton if Vx != kk")
         vx = register[args[1]]
-        if vx != (instuction & 0x0FF): pc += 2
+        if vx != (instruction & 0x0FF): pc += 2
     elif opcode == OP.SE_XY:
         print("Skip next instruciton if Vx = Vy")
         vx = register[args[1]]
@@ -226,10 +231,10 @@ def execute_instruction(opcode, args):
         if (vx == vy): pc += 2
     elif opcode == OP.LD:
         print("Set Vx = kk")
-        register[args[1]] = instuction & 0x0FF
+        register[args[1]] = instruction & 0x0FF
     elif opcode == OP.ADD:
         print("Set Vx = Vx + kk")
-        register[args[1]] = register[args[1]] + (instuction & 0x0FF)
+        register[args[1]] = register[args[1]] + (instruction & 0x0FF)
     elif opcode == OP.LD_XY: 
         register[second_nibble] = register[third_nibble]
     elif opcode == OP.OR_XY: 
@@ -267,11 +272,11 @@ def execute_instruction(opcode, args):
     elif opcode == OP.SNE_XY:
         if register[second_nibble] != register[third_nibble]: pc += 2
     elif opcode == OP.LD_IA:
-        pass
+        i_register = (0x0FFF & instruction)
     elif opcode == OP.JP_VA:
-        pass
+        pc = register[0] + (0x0FFF & instruction)
     elif opcode == OP.RND:
-        pass
+        register[args[1]] = (random.randint(0, 255) & (instruction & 0x0FF))
 
 with open("IBM.ch8", "rb") as f:
     i = 512
@@ -280,16 +285,17 @@ with open("IBM.ch8", "rb") as f:
         i += 1
 
 while pc < len(memory):
-    instuction = memory[pc:pc+2]
+    instruction = memory[pc:pc+2]
     pc += 2
     # print(instuction)
-    if instuction == [b'', b'']: break
+    if instruction == [b'', b'']: break
 
     # current_instuction = b"".join(instuction).hex()
     # op_code, args = decode_instruction(current_instuction)
     # execute_instruction(op_code, args)
 
-    processed_instruction = int.from_bytes(b"".join(instuction), byteorder='big')
+    processed_instruction = int.from_bytes(b"".join(instruction), byteorder='big')
     op_code, args = decode_instruction(processed_instruction)
+    # print(instruction)
     # print(op_code, args)
-    # execute_instruction(op_code, args)
+    execute_instruction(op_code, args)
