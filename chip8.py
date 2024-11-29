@@ -15,6 +15,27 @@ register = [0]*16 # Vx where x is a hexadecimal digit
 i_register = 0 # register I; store memory addresses; right most 12 bits are used
 VF = 0 # Flag register?
 
+screen = [0] * (64 * 32) 
+
+font = [ 
+    0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+    0x20, 0x60, 0x20, 0x20, 0x70, # 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0,  #5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+]
+
 class OP(Enum):
     SYS = 0  # SYS addr
     CLS = 1
@@ -39,82 +60,16 @@ class OP(Enum):
     LD_IA = 20
     JP_VA = 21
     RND = 22
+    DRW = 23
 
-# """
-# return (OPCODE, [NONE | ....])
-# """
-# def decode_instruction(instruction: str):
-#     if instruction.startswith("0"):
-#         if instruction.endswith("0"):
-#             return (OP.CLS, None) # Clear the display
-#         elif instruction.endswith("E"):
-#             return (OP.RET, None)
-#         else:
-#             return (OP.SYS, instruction[1:]) # nnn variable := instruction[1:]
-#     elif instruction.startswith("1"):
-#         return (OP.JP, instruction[1:])
-#     elif instruction.startswith("2"):
-#         return (OP.CALL, instruction[1:])
-#     elif instruction.startswith("3"):
-#         return (OP.SE, instruction[1:])
-#     elif instruction.startswith("4"):
-#         return (OP.SNE, instruction[1:])
-#     elif instruction.startswith("5"):
-#         return (OP.SE_XY, instruction[1:])
-#     elif instruction.startswith("6"):
-#         return (OP.LD, instruction[1:])
-#     elif instruction.startswith("7"): 
-#         return (OP.ADD, instruction[1:])
-#     elif instruction.startswith("8"):
-#         print(instruction)
-#     return (None, None)
 
-# def execute_instruction(opcode, args): 
-#     global pc
-#     global stack
-#     if opcode == OP.CLS:
-#         print("Clear Display")
-#     elif opcode == OP.RET:
-#         print("Return from subroutine.")
-#     elif opcode == OP.JP: 
-#         old_pc = pc
-#         pc = int(args, 16)
-#         print("JUMP TO: ",pc)
-#         pc = old_pc # TODO: delete
-#     elif opcode == OP.CALL:
-#         sp += 1
-#         print('set sp to ',sp)
-#         stack = pc
-#         pc = args
-#         print('set pc to ', args)
-#         pc = old_pc # TODO: delete
-#     elif opcode == OP.SE:
-#         x, kk = args[0], args[1:]
-#         if register[int(x, 16)] == int(kk, 16):
-#             old_pc = pc
-#             pc += 2
-#             print('OP-SE: incrementing to', pc)
-#             pc = old_pc # TODO: delete
-#     elif op_code == OP.SNE:
-#         x, kk = args[0], args[1:]
-#         if register[int(x, 16)] != int(kk, 16):
-#             old_pc = pc
-#             pc += 2
-#             print('OP-SNE: incrementing to', pc)
-#             pc = old_pc # TODO: delete
-#     elif op_code == OP.SE_XY:
-#         print("SE XY, args: ", args)
-#         # TODO: compack to implement
-#     elif op_code == OP.LD:
-#         x, kk = args[0], args[1:]
-#         register[int(x, 16)] = int(kk, 16)
-#     elif op_code == OP.ADD:
-#         x, k = int(args[0], 16), int(args[1:], 16)
-#         register[x] += k
-    
-"""
-return (OPCODE, [NONE | ....])
-"""
+def view_screen(): 
+    for i in range(32):
+        print("".join(map(lambda x: '.' if x == 0 else '*', (screen[i*64: (i + 1) * 64]))))
+
+def set_pixel(x, y, state):
+    screen[(y * 64) + x] = state
+
 def decode_instruction(instruction):
     first_nibble = (0xF000 & instruction) >> 12
     second_nibble = (0x0F00 & instruction) >> 8
@@ -189,16 +144,17 @@ def decode_instruction(instruction):
     elif first_nibble == 0xC:
         print("0xC:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         return (OP.RND, nibbles)
+    elif first_nibble == 0xD:
+        print("0xD:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+        return (OP.DRW, nibbles)
     return (None, None)
 
 def execute_instruction(opcode, args): 
     global pc
     global stack
     global VF
-    global i_register
-    # TODO: Change this
-    # first_nibble = second_nibble = third_nibble = fourth_nibble = instruction = None
-    # TODO: change this check
+    global i_register 
+    
     if args and len(args) == 5:
         first_nibble, second_nibble, third_nibble, fourth_nibble, instruction = args
     if opcode == OP.SYS:
@@ -277,12 +233,59 @@ def execute_instruction(opcode, args):
         pc = register[0] + (0x0FFF & instruction)
     elif opcode == OP.RND:
         register[args[1]] = (random.randint(0, 255) & (instruction & 0x0FF))
+    elif opcode == OP.DRW: 
+        Vx, Vy = register[second_nibble], register[third_nibble]
+        n = fourth_nibble
+        sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in memory[i_register: i_register + n]]
+        #sprite_data = [bin(data)[2:].zfill(8) for data in font[5:10]]
+        #sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in font[i_register: i_register + n]]
+        print("[DEBUG] n:", n)
+        print("[DEBUG] sprite_data:", sprite_data)
+        sprite = [list(map(int, row)) for row in sprite_data]
+        draw_sprite(Vx, Vy, sprite)
+        # for byte in sprite_data:
+        #     print(byte)
+        view_screen()
 
 with open("IBM.ch8", "rb") as f:
+    font_start = 200
+    for char in font:
+        memory[font_start] = char
+        font_start += 1
     i = 512
     while (byte := f.read(1)):
         memory[i] = byte
         i += 1
+
+ex_data = [1, 0, 0, 1, 1, 0, 0, 1]
+ex_sprite = [[1, 1, 0, 1, 0, 0, 0, 1], [1, 0, 0, 1, 1, 0, 0, 1]]
+R = [[1, 1, 1, 0, 0, 0, 0, 0], 
+     [1, 0, 0, 1, 0, 0, 0, 0], 
+     [1, 1, 1, 0, 0, 0, 0, 0], 
+     [1, 0, 0, 1, 0, 0, 0, 0],
+     [1, 0, 0, 1, 0, 0, 0, 0]]
+def draw_row(start_x, start_y, row):
+    for i, x in enumerate(row): 
+        set_pixel(start_x + i, start_y, x)
+
+def draw_row_n(start_x, start_y, n, row):
+    for i in range(n):
+        draw_row(start_x, start_y + i, row)
+
+def draw_sprite(start_x, start_y, sprite):
+    for i, row in enumerate(sprite):
+        draw_row(start_x, start_y + i, row)
+
+# set_pixel(0, 0, 1)
+# set_pixel(63, 0, 1)
+# set_pixel(0, 31, 1)
+
+# draw_row(0, 0, ex_data)
+# draw_row(0, 1, ex_data)
+
+# draw_sprite(0, 0, ex_sprite)
+# draw_sprite(0, 0, R)
+# draw_sprite(15, 8, R)
 
 while pc < len(memory):
     instruction = memory[pc:pc+2]
@@ -299,3 +302,4 @@ while pc < len(memory):
     # print(instruction)
     # print(op_code, args)
     execute_instruction(op_code, args)
+    if instruction == [b'\x12', b'(']: break
