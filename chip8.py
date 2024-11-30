@@ -4,6 +4,7 @@ Chip-8 is a interpreted programming language.
 """
 from enum import Enum
 import random
+import tkinter as tk
 
 max_memory = (1 << 12)
 memory = [b''] * (max_memory)  # 4096 addresses 
@@ -17,13 +18,17 @@ VF = 0 # Flag register?
 
 screen = [0] * (64 * 32) 
 
+window = tk.Tk()
+canvas = tk.Canvas(window, width=64*16, height=32*16)
+canvas.pack()
+
 font = [ 
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
     0x20, 0x60, 0x20, 0x20, 0x70, # 1
     0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
     0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
     0x90, 0x90, 0xF0, 0x10, 0x10, # 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0,  #5
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
     0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
     0xF0, 0x10, 0x20, 0x40, 0x40, # 7
     0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
@@ -66,9 +71,6 @@ class OP(Enum):
 def view_screen(): 
     for i in range(32):
         print("".join(map(lambda x: '.' if x == 0 else '*', (screen[i*64: (i + 1) * 64]))))
-
-def set_pixel(x, y, state):
-    screen[(y * 64) + x] = state
 
 def decode_instruction(instruction):
     first_nibble = (0xF000 & instruction) >> 12
@@ -154,7 +156,7 @@ def execute_instruction(opcode, args):
     global stack
     global VF
     global i_register 
-    
+
     if args and len(args) == 5:
         first_nibble, second_nibble, third_nibble, fourth_nibble, instruction = args
     if opcode == OP.SYS:
@@ -239,18 +241,16 @@ def execute_instruction(opcode, args):
         sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in memory[i_register: i_register + n]]
         #sprite_data = [bin(data)[2:].zfill(8) for data in font[5:10]]
         #sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in font[i_register: i_register + n]]
-        print("[DEBUG] n:", n)
+        print("[DEBUG] n, Vx, Vy:", n, Vx, Vy)
         print("[DEBUG] sprite_data:", sprite_data)
         sprite = [list(map(int, row)) for row in sprite_data]
         draw_sprite(Vx, Vy, sprite)
-        # for byte in sprite_data:
-        #     print(byte)
         view_screen()
 
 with open("IBM.ch8", "rb") as f:
     font_start = 200
     for char in font:
-        memory[font_start] = char
+        memory[font_start] = chr(char)
         font_start += 1
     i = 512
     while (byte := f.read(1)):
@@ -264,6 +264,10 @@ R = [[1, 1, 1, 0, 0, 0, 0, 0],
      [1, 1, 1, 0, 0, 0, 0, 0], 
      [1, 0, 0, 1, 0, 0, 0, 0],
      [1, 0, 0, 1, 0, 0, 0, 0]]
+
+def set_pixel(x, y, state):
+    screen[(y * 64) + x] = state
+
 def draw_row(start_x, start_y, row):
     for i, x in enumerate(row): 
         set_pixel(start_x + i, start_y, x)
@@ -287,6 +291,7 @@ def draw_sprite(start_x, start_y, sprite):
 # draw_sprite(0, 0, R)
 # draw_sprite(15, 8, R)
 
+
 while pc < len(memory):
     instruction = memory[pc:pc+2]
     pc += 2
@@ -303,3 +308,12 @@ while pc < len(memory):
     # print(op_code, args)
     execute_instruction(op_code, args)
     if instruction == [b'\x12', b'(']: break
+
+print(screen)
+
+for x in range(64):
+    for y in range(32):
+        if screen[(y * 64) + x] == 1:
+            canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
+
+window.mainloop()
