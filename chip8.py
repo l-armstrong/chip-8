@@ -291,12 +291,30 @@ def draw_sprite(start_x, start_y, sprite):
 # draw_sprite(0, 0, R)
 # draw_sprite(15, 8, R)
 
+def step():
+    global pc
+    # while pc < len(memory):
+    #     instruction = memory[pc:pc+2]
+    #     pc += 2
+    #     # print(instuction)
+    #     if instruction == [b'', b'']: break
 
-while pc < len(memory):
+    #     # current_instuction = b"".join(instuction).hex()
+    #     # op_code, args = decode_instruction(current_instuction)
+    #     # execute_instruction(op_code, args)
+
+    #     processed_instruction = int.from_bytes(b"".join(instruction), byteorder='big')
+    #     op_code, args = decode_instruction(processed_instruction)
+    #     # print(instruction)
+    #     # print(op_code, args)
+    #     execute_instruction(op_code, args)
+    #     if instruction == [b'\x12', b'(']: break
+    #     # if instruction == [b'\x13', b'I']: break
+    print("running step: ", pc)
     instruction = memory[pc:pc+2]
     pc += 2
     # print(instuction)
-    if instruction == [b'', b'']: break
+    # if instruction == [b'', b'']: break
 
     # current_instuction = b"".join(instuction).hex()
     # op_code, args = decode_instruction(current_instuction)
@@ -307,13 +325,19 @@ while pc < len(memory):
     # print(instruction)
     # print(op_code, args)
     execute_instruction(op_code, args)
-    if instruction == [b'\x12', b'(']: break
+    # if instruction == [b'\x12', b'(']: break
+    # if instruction == [b'\x13', b'I']: break
+    draw_tk_screen()
+    window.after(1, step)
 
-print(screen)
+def draw_tk_screen():
+    for x in range(64):
+        for y in range(32):
+            if screen[(y * 64) + x] == 1:
+                canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
 
-for x in range(64):
-    for y in range(32):
-        if screen[(y * 64) + x] == 1:
-            canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
+# capture keyboard events
+# deal with sound 
 
+window.after(1, step)            
 window.mainloop()
