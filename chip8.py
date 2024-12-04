@@ -15,6 +15,7 @@ pc = 512
 register = [0]*16 # Vx where x is a hexadecimal digit
 i_register = 0 # register I; store memory addresses; right most 12 bits are used
 VF = 0 # Flag register?
+delay_timer = 0
 
 screen = [0] * (64 * 32) 
 
@@ -66,7 +67,17 @@ class OP(Enum):
     JP_VA = 21
     RND = 22
     DRW = 23
-
+    SKP = 24
+    SKNP = 25
+    LD_XDT = 26
+    LD_XKEY = 27
+    LD_DTX = 28
+    LD_STVX = 29
+    ADD_IX = 30
+    LD_FX = 31
+    LD_BX = 32
+    LD_IX = 33 # LD [I], Vx
+    LD_XI = 34 # LD Vx, [I]
 
 def view_screen(): 
     for i in range(32):
@@ -149,6 +160,41 @@ def decode_instruction(instruction):
     elif first_nibble == 0xD:
         print("0xD:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
         return (OP.DRW, nibbles)
+    elif first_nibble == 0xE: 
+        if fourth_nibble == 0xE:
+            print("0xEx9E:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.SKP, nibbles)
+        elif fourth_nibble == 0x1:
+            print("0xExA1:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.SKNP, nibbles)
+    elif first_nibble == 0xF:
+        if fourth_nibble == 0x7:
+            print("0xF07", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_XDT, nibbles)
+        elif fourth_nibble == 0xA:
+            print("0xFx0A:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_XKEY, nibbles)
+        elif third_nibble == 0x1 and fourth_nibble == 0x5:
+            print("0xFx15:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_DTX, nibbles)
+        elif fourth_nibble == 0x8:
+            print("0xFx18:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_STVX, nibbles)
+        elif fourth_nibble == 0xE:
+            print("0xFx1E:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.ADD_IX, nibbles)
+        elif fourth_nibble == 0x9:
+            print("0xFx29:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_FX, nibbles)
+        elif fourth_nibble == 0x3:
+            print("0xFx33:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_BX, nibbles)
+        elif third_nibble == 0x5 and fourth_nibble == 0x5:
+            print("0xFx55:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_IX, nibbles)
+        elif third_nibble == 0x6 and fourth_nibble == 0x5:
+            print("0xFx65:", first_nibble, second_nibble, third_nibble, fourth_nibble, instruction)
+            return (OP.LD_XI, nibbles)
     return (None, None)
 
 def execute_instruction(opcode, args): 
@@ -246,6 +292,15 @@ def execute_instruction(opcode, args):
         sprite = [list(map(int, row)) for row in sprite_data]
         draw_sprite(Vx, Vy, sprite)
         view_screen()
+    elif opcode == OP.SKP:
+        pass
+    elif opcode == OP.SKNP:
+        pass
+    elif opcode == OP.LD_XDT:
+        register[second_nibble] = delay_timer
+    elif opcode == OP.LD_XKEY:
+        pass
+        
 
 with open("IBM.ch8", "rb") as f:
     font_start = 200
@@ -327,14 +382,18 @@ def step():
     execute_instruction(op_code, args)
     # if instruction == [b'\x12', b'(']: break
     # if instruction == [b'\x13', b'I']: break
-    draw_tk_screen()
+    draw_screen()
+    decrease_time()
     window.after(1, step)
 
-def draw_tk_screen():
+def draw_screen():
     for x in range(64):
         for y in range(32):
             if screen[(y * 64) + x] == 1:
                 canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
+
+def decrease_time():
+    if delay_timer > 0: delay_timer -= 1
 
 # capture keyboard events
 # deal with sound 
