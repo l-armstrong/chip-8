@@ -16,8 +16,10 @@ register = [0]*16 # Vx where x is a hexadecimal digit
 i_register = 0 # register I; store memory addresses; right most 12 bits are used
 VF = 0 # Flag register?
 delay_timer = 0
-
+sound_timer = 0
 screen = [0] * (64 * 32) 
+font_start = 200
+keys = [False] * 16
 
 window = tk.Tk()
 canvas = tk.Canvas(window, width=64*16, height=32*16)
@@ -200,8 +202,12 @@ def decode_instruction(instruction):
 def execute_instruction(opcode, args): 
     global pc
     global stack
+    global sp
     global VF
     global i_register 
+    global delay_timer
+    global sound_timer
+    global screen
 
     if args and len(args) == 5:
         first_nibble, second_nibble, third_nibble, fourth_nibble, instruction = args
@@ -209,8 +215,11 @@ def execute_instruction(opcode, args):
         print("SYS")
     elif opcode == OP.CLS:
         print("Clear Display")
+        screen = [0] * (64 * 32) 
     elif opcode == OP.RET:
         print("Return from subroutine.")
+        pc = stack[sp]
+        sp = sp - 1
     elif opcode == OP.JP: 
         instruction = args[-1]
         print("Jump to location", instruction & 0x0FFF)
@@ -293,27 +302,36 @@ def execute_instruction(opcode, args):
         draw_sprite(Vx, Vy, sprite)
         view_screen()
     elif opcode == OP.SKP:
-        pass
+        key_pressed = keys[register[second_nibble]]
+        if key_pressed: pc += 2
     elif opcode == OP.SKNP:
-        pass
+        key_pressed = keys[register[second_nibble]]
+        if not key_pressed: pc += 2
     elif opcode == OP.LD_XDT:
         register[second_nibble] = delay_timer
     elif opcode == OP.LD_XKEY:
         pass
     elif opcode == OP.LD_DTX:
-        pass
+        delay_timer = register[second_nibble]
     elif opcode == OP.LD_STVX:
-        pass
+        sound_timer = register[second_nibble]
     elif opcode == OP.ADD_IX:
-        pass
+        i_register = i_register + register[second_nibble]
     elif opcode == OP.LD_FX:
-        pass
+        i_register = font_start + (register[second_nibble] * 5)
     elif opcode == OP.LD_BX:
-        pass
+        Vx = register[second_nibble]
+        memory[i_register] = (Vx / 100) % 10 
+        memory[i_register + 1] = (Vx / 10) % 10
+        memory[i_register + 2] = vx % 10
     elif opcode == OP.LD_IX:
-        pass
+        for i in range(second_nibble):
+            memory[i_register + i] = register[i]
+        i_register = i_register + second_nibble + 1
     elif opcode == OP.LD_XI:
-        pass
+        for i in range(second_nibble):
+            register[i] = memory[i_register + i]
+        i_register = i_register + second_nibble + 1
         
 
 with open("IBM.ch8", "rb") as f:
@@ -407,7 +425,10 @@ def draw_screen():
                 canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
 
 def decrease_time():
+    global delay_timer
+    global sound_timer
     if delay_timer > 0: delay_timer -= 1
+    if sound_timer > 0: sound_timer -= 1
 
 # capture keyboard events
 # deal with sound 
