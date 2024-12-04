@@ -300,6 +300,20 @@ def execute_instruction(opcode, args):
         register[second_nibble] = delay_timer
     elif opcode == OP.LD_XKEY:
         pass
+    elif opcode == OP.LD_DTX:
+        pass
+    elif opcode == OP.LD_STVX:
+        pass
+    elif opcode == OP.ADD_IX:
+        pass
+    elif opcode == OP.LD_FX:
+        pass
+    elif opcode == OP.LD_BX:
+        pass
+    elif opcode == OP.LD_IX:
+        pass
+    elif opcode == OP.LD_XI:
+        pass
         
 
 with open("IBM.ch8", "rb") as f:
