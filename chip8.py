@@ -286,6 +286,7 @@ def execute_instruction(opcode, args):
         if register[second_nibble] != register[third_nibble]: pc += 2
     elif opcode == OP.LD_IA:
         i_register = (0x0FFF & instruction)
+        print("0xA", i_register)
     elif opcode == OP.JP_VA:
         pc = register[0] + (0x0FFF & instruction)
     elif opcode == OP.RND:
@@ -293,14 +294,39 @@ def execute_instruction(opcode, args):
     elif opcode == OP.DRW: 
         Vx, Vy = register[second_nibble], register[third_nibble]
         n = fourth_nibble
-        sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in memory[i_register: i_register + n]]
+        sprite_data = [bin(int(data.hex() if data else b'0x00', base=16))[2:].zfill(8) for data in memory[i_register: i_register + n]]
         #sprite_data = [bin(data)[2:].zfill(8) for data in font[5:10]]
         #sprite_data = [bin(int(data.hex(), base=16))[2:].zfill(8) for data in font[i_register: i_register + n]]
         print("[DEBUG] n, Vx, Vy:", n, Vx, Vy)
         print("[DEBUG] sprite_data:", sprite_data)
         sprite = [list(map(int, row)) for row in sprite_data]
+        # print("sprite", sprite)
+        # sprite = [int(d, 2) for d in sprite_data] #new
+        # min_row = Vy
+        # max_row = Vy + (len(sprite) - 1)
+        # collision = False
+        # for row_idx in range(min_row, max_row + 1):
+        #     b = sprite[row_idx - Vy]
+        #     for bit_idx in list(range(0,9))[::-1]:
+        #         pixel_pos = (row_idx * 64 + (Vx + (7 - bit_idx))) % len(screen)
+        #         old_value = screen[pixel_pos]
+        #         new_value = ((b & 0x1) << bit_idx) > 0
+        #         if old_value and new_value:
+        #             collision = True
+        #         screen[pixel_pos] = old_value ^ new_value
+        # if collision:
+        #     VF = 1
+        # else:
+        #     VF = 0
+        
+        # #new
+        # print("[DEBUG] bin", sprite)
+        # print("[DEBUG] bin",[bin(x)[2:] for x in sprite])
+        # sprite = [list(map(int, row)) for row in [bin(int(print(x), 2))[2:] for x in sprite]]
+        # sprite = [list(map(int, row)) for row in [bin(x)[2:] for x in sprite]]
+
         draw_sprite(Vx, Vy, sprite)
-        view_screen()
+        view_screen() # TODO: remove; for debugging
     elif opcode == OP.SKP:
         key_pressed = keys[register[second_nibble]]
         if key_pressed: pc += 2
@@ -316,25 +342,43 @@ def execute_instruction(opcode, args):
     elif opcode == OP.LD_STVX:
         sound_timer = register[second_nibble]
     elif opcode == OP.ADD_IX:
+        print("[DEBUG] i_register", i_register)
+        print("[DEBUG] register[second_nibble]", register[second_nibble])
+        print("[DEBUG] register", register)
         i_register = i_register + register[second_nibble]
     elif opcode == OP.LD_FX:
         i_register = font_start + (register[second_nibble] * 5)
     elif opcode == OP.LD_BX:
         Vx = register[second_nibble]
-        memory[i_register] = (Vx / 100) % 10 
-        memory[i_register + 1] = (Vx / 10) % 10
-        memory[i_register + 2] = vx % 10
+        memory[i_register] = (Vx // 100) % 10 
+        memory[i_register + 1] = (Vx // 10) % 10
+        memory[i_register + 2] = Vx % 10
     elif opcode == OP.LD_IX:
         for i in range(second_nibble):
-            memory[i_register + i] = register[i]
+            memory[i_register + i] = register[i].to_bytes(1, 'big')
         i_register = i_register + second_nibble + 1
     elif opcode == OP.LD_XI:
         for i in range(second_nibble):
-            register[i] = memory[i_register + i]
+            register[i] = int.from_bytes(memory[i_register + i], 'big')
         i_register = i_register + second_nibble + 1
-        
+    
+    # if i_register == 2135:
+    #     print("first_nibble", first_nibble)
+    #     print("second_nibble", second_nibble)
+    #     print("third_nibble", third_nibble)
+    #     print("fourth_nibble", fourth_nibble)
+    #     print("instruction", instruction)
+    
+    if any(isinstance(elm, bytes) for elm in register):
+        print("opcode", opcode)
+        print("first_nibble", first_nibble)
+        print("second_nibble", second_nibble)
+        print("third_nibble", third_nibble)
+        print("fourth_nibble", fourth_nibble)
+        print("instruction", instruction)
+        exit(1)
 
-with open("IBM.ch8", "rb") as f:
+with open("5-quirks.ch8", "rb") as f:
     font_start = 200
     for char in font:
         memory[font_start] = chr(char)
@@ -416,7 +460,7 @@ def step():
     # if instruction == [b'\x13', b'I']: break
     draw_screen()
     decrease_time()
-    window.after(1, step)
+    window.after(2, step)
 
 def draw_screen():
     for x in range(64):
@@ -433,5 +477,5 @@ def decrease_time():
 # capture keyboard events
 # deal with sound 
 
-window.after(1, step)            
+window.after(2, step)            
 window.mainloop()
