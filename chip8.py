@@ -18,6 +18,7 @@ VF = 0 # Flag register?
 delay_timer = 0
 sound_timer = 0
 screen = [0] * (64 * 32) 
+# convention is 0x050–0x09F for font_start
 font_start = 200
 keys = [False] * 16
 
@@ -326,7 +327,8 @@ def execute_instruction(opcode, args):
         # sprite = [list(map(int, row)) for row in [bin(x)[2:] for x in sprite]]
 
         draw_sprite(Vx, Vy, sprite)
-        view_screen() # TODO: remove; for debugging
+        draw_screen()
+        # view_screen() # TODO: remove; for debugging
     elif opcode == OP.SKP:
         key_pressed = keys[register[second_nibble]]
         if key_pressed: pc += 2
@@ -359,27 +361,15 @@ def execute_instruction(opcode, args):
         i_register = i_register + second_nibble + 1
     elif opcode == OP.LD_XI:
         for i in range(second_nibble):
-            register[i] = int.from_bytes(memory[i_register + i], 'big')
+            print("memory[i_register + i]", memory[i_register + i])
+            print("type: memory[i_register + i]", type(memory[i_register + i]))
+            element = memory[i_register + i]
+            register[i] = element if isinstance(element, int) else int.from_bytes(element, 'big')
         i_register = i_register + second_nibble + 1
     
-    # if i_register == 2135:
-    #     print("first_nibble", first_nibble)
-    #     print("second_nibble", second_nibble)
-    #     print("third_nibble", third_nibble)
-    #     print("fourth_nibble", fourth_nibble)
-    #     print("instruction", instruction)
-    
-    if any(isinstance(elm, bytes) for elm in register):
-        print("opcode", opcode)
-        print("first_nibble", first_nibble)
-        print("second_nibble", second_nibble)
-        print("third_nibble", third_nibble)
-        print("fourth_nibble", fourth_nibble)
-        print("instruction", instruction)
-        exit(1)
 
-with open("5-quirks.ch8", "rb") as f:
-    font_start = 200
+with open("corax-test.ch8", "rb") as f:
+    # font_start = 200
     for char in font:
         memory[font_start] = chr(char)
         font_start += 1
@@ -421,9 +411,10 @@ def draw_sprite(start_x, start_y, sprite):
 # draw_sprite(0, 0, ex_sprite)
 # draw_sprite(0, 0, R)
 # draw_sprite(15, 8, R)
-
+ran = False
 def step():
     global pc
+    global ran
     # while pc < len(memory):
     #     instruction = memory[pc:pc+2]
     #     pc += 2
@@ -458,9 +449,12 @@ def step():
     execute_instruction(op_code, args)
     # if instruction == [b'\x12', b'(']: break
     # if instruction == [b'\x13', b'I']: break
-    draw_screen()
+    if not ran: draw_screen(); ran = True
+    # draw_screen()
     decrease_time()
-    window.after(2, step)
+    # 16.67 ms ?
+    # window.after(2, step)
+    window.after(16, step)
 
 def draw_screen():
     for x in range(64):
@@ -477,5 +471,7 @@ def decrease_time():
 # capture keyboard events
 # deal with sound 
 
-window.after(2, step)            
+ # 16.67 ms ?
+# window.after(2, step)            
+window.after(16, step)            
 window.mainloop()
