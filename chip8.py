@@ -21,6 +21,15 @@ screen = [0] * (64 * 32)
 # convention is 0x050–0x09F for font_start
 font_start = 200
 keys = [False] * 16
+"""
+Key layout
+1	2	3	C
+4	5	6	D
+7	8	9	E
+A	0	B	F
+
+use keyboard scancodes rather than key string constants
+"""
 
 window = tk.Tk()
 canvas = tk.Canvas(window, width=64*16, height=32*16)
@@ -217,6 +226,7 @@ def execute_instruction(opcode, args):
     elif opcode == OP.CLS:
         print("Clear Display")
         screen = [0] * (64 * 32) 
+        draw_screen()
     elif opcode == OP.RET:
         print("Return from subroutine.")
         pc = stack[sp]
@@ -232,23 +242,30 @@ def execute_instruction(opcode, args):
         pc = instruction & 0x0FFF
     elif opcode == OP.SE:
         print("Skip next instruciton if Vx = kk")
-        vx = register[args[1]]
+        # vx = register[args[1]]
+        vx = register[second_nibble]
         if vx == (instruction & 0x0FF): pc += 2
     elif opcode == OP.SNE:
         print("Skip next instruciton if Vx != kk")
-        vx = register[args[1]]
+        # vx = register[args[1]]
+        vx = register[second_nibble]
         if vx != (instruction & 0x0FF): pc += 2
     elif opcode == OP.SE_XY:
         print("Skip next instruciton if Vx = Vy")
-        vx = register[args[1]]
-        vy = register[args[2]]
+        # vx = register[args[1]]
+        # vy = register[args[2]]
+        vx = register[second_nibble]
+        vy = register[third_nibble]
         if (vx == vy): pc += 2
     elif opcode == OP.LD:
         print("Set Vx = kk")
-        register[args[1]] = instruction & 0x0FF
+        # register[args[1]] = instruction & 0x0FF
+        register[second_nibble] = instruction & 0x0FF
     elif opcode == OP.ADD:
         print("Set Vx = Vx + kk")
-        register[args[1]] = register[args[1]] + (instruction & 0x0FF)
+        # register[args[1]] = register[args[1]] + (instruction & 0x0FF)
+        print("register[second_nibble] + (instruction & 0x0FF) ==", register[second_nibble] + (instruction & 0x0FF))
+        register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) 
     elif opcode == OP.LD_XY: 
         register[second_nibble] = register[third_nibble]
     elif opcode == OP.OR_XY: 
@@ -270,7 +287,12 @@ def execute_instruction(opcode, args):
         else: VF = 0
         register[second_nibble] = difference
     elif opcode == OP.SHR:
-        if (second_nibble & 0x01): VF = 1
+        # TODO: maybe could lead to errors
+        # if (second_nibble & 0x01): VF = 1
+        # else: VF = 0
+        # register[second_nibble] = register[second_nibble] >> 1
+        register[second_nibble] = register[third_nibble]
+        if register[second_nibble] & 0x01: VF = 1
         else: VF = 0
         register[second_nibble] = register[second_nibble] >> 1
     elif opcode == OP.SUBN:
@@ -280,20 +302,29 @@ def execute_instruction(opcode, args):
         else: VF = 0
         register[second_nibble] = difference
     elif opcode == OP.SHL:
-        if (second_nibble & 0x01): VF = 1
+        # TODO: maybe could lead to errors
+        # if (second_nibble & 0x01): VF = 1
+        # else: VF = 0
+        # register[second_nibble] = register[second_nibble] << 1
+        register[second_nibble] = register[third_nibble]
+        if register[second_nibble] & 0x01: VF = 1
         else: VF = 0
         register[second_nibble] = register[second_nibble] << 1
     elif opcode == OP.SNE_XY:
-        if register[second_nibble] != register[third_nibble]: pc += 2
+        vx = register[second_nibble]
+        vy = register[third_nibble]
+        # if register[second_nibble] != register[third_nibble]: pc += 2
+        if vx != vy: pc += 2
     elif opcode == OP.LD_IA:
         i_register = (0x0FFF & instruction)
         print("0xA", i_register)
     elif opcode == OP.JP_VA:
         pc = register[0] + (0x0FFF & instruction)
     elif opcode == OP.RND:
-        register[args[1]] = (random.randint(0, 255) & (instruction & 0x0FF))
+        # register[args[1]] = (random.randint(0, 255) & (instruction & 0x0FF))
+        register[second_nibble] = (random.randint(0, 255) & (instruction & 0x0FF))
     elif opcode == OP.DRW: 
-        Vx, Vy = register[second_nibble], register[third_nibble]
+        Vx, Vy = register[second_nibble] % 64, register[third_nibble] % 32
         n = fourth_nibble
         sprite_data = [bin(int(data.hex() if data else b'0x00', base=16))[2:].zfill(8) for data in memory[i_register: i_register + n]]
         #sprite_data = [bin(data)[2:].zfill(8) for data in font[5:10]]
@@ -302,38 +333,24 @@ def execute_instruction(opcode, args):
         print("[DEBUG] sprite_data:", sprite_data)
         sprite = [list(map(int, row)) for row in sprite_data]
         # print("sprite", sprite)
-        # sprite = [int(d, 2) for d in sprite_data] #new
-        # min_row = Vy
-        # max_row = Vy + (len(sprite) - 1)
-        # collision = False
-        # for row_idx in range(min_row, max_row + 1):
-        #     b = sprite[row_idx - Vy]
-        #     for bit_idx in list(range(0,9))[::-1]:
-        #         pixel_pos = (row_idx * 64 + (Vx + (7 - bit_idx))) % len(screen)
-        #         old_value = screen[pixel_pos]
-        #         new_value = ((b & 0x1) << bit_idx) > 0
-        #         if old_value and new_value:
-        #             collision = True
-        #         screen[pixel_pos] = old_value ^ new_value
-        # if collision:
-        #     VF = 1
-        # else:
-        #     VF = 0
-        
+        # sprite = [int(d, 2) for d in sprite_data] #new  
+        print("[DEBUG] SPRITE",sprite)
         # #new
         # print("[DEBUG] bin", sprite)
         # print("[DEBUG] bin",[bin(x)[2:] for x in sprite])
         # sprite = [list(map(int, row)) for row in [bin(int(print(x), 2))[2:] for x in sprite]]
         # sprite = [list(map(int, row)) for row in [bin(x)[2:] for x in sprite]]
-
+        if Vy >= 200: print("Hello Vy, ", Vy); exit(1)
         draw_sprite(Vx, Vy, sprite)
         draw_screen()
         # view_screen() # TODO: remove; for debugging
     elif opcode == OP.SKP:
-        key_pressed = keys[register[second_nibble]]
+        print("register[second_nibble]", register[second_nibble])
+        print("register", register)
+        key_pressed = keys[register[second_nibble] - 1]
         if key_pressed: pc += 2
     elif opcode == OP.SKNP:
-        key_pressed = keys[register[second_nibble]]
+        key_pressed = keys[register[second_nibble] - 1]
         if not key_pressed: pc += 2
     elif opcode == OP.LD_XDT:
         register[second_nibble] = delay_timer
@@ -366,9 +383,14 @@ def execute_instruction(opcode, args):
             element = memory[i_register + i]
             register[i] = element if isinstance(element, int) else int.from_bytes(element, 'big')
         i_register = i_register + second_nibble + 1
-    
+    # else: raise NotImplementedError(f"Opcode {opcode} not implemented")
+    # if 17 in register:
+    #     print("opcode:",opcode)
+    #     print("register:", register)
+    #     exit(1)
 
-with open("corax-test.ch8", "rb") as f:
+
+with open("keypad-test.ch8", "rb") as f:
     # font_start = 200
     for char in font:
         memory[font_start] = chr(char)
@@ -387,6 +409,10 @@ R = [[1, 1, 1, 0, 0, 0, 0, 0],
      [1, 0, 0, 1, 0, 0, 0, 0]]
 
 def set_pixel(x, y, state):
+    print("y", y)
+    print("x", x)
+    print("(y * 64) + x", (y * 64) + x)
+    print("len screen:", len(screen))
     screen[(y * 64) + x] = state
 
 def draw_row(start_x, start_y, row):
@@ -435,7 +461,7 @@ def step():
     print("running step: ", pc)
     instruction = memory[pc:pc+2]
     pc += 2
-    # print(instuction)
+    print("instruction:",instruction)
     # if instruction == [b'', b'']: break
 
     # current_instuction = b"".join(instuction).hex()
@@ -451,7 +477,7 @@ def step():
     # if instruction == [b'\x13', b'I']: break
     if not ran: draw_screen(); ran = True
     # draw_screen()
-    decrease_time()
+    # decrease_time()
     # 16.67 ms ?
     # window.after(2, step)
     window.after(16, step)
@@ -467,11 +493,14 @@ def decrease_time():
     global sound_timer
     if delay_timer > 0: delay_timer -= 1
     if sound_timer > 0: sound_timer -= 1
-
+    window.after(16, decrease_time)
 # capture keyboard events
 # deal with sound 
 
  # 16.67 ms ?
-# window.after(2, step)            
-window.after(16, step)            
+# window.after(2, step)     
+
+window.after(16, decrease_time)       
+window.after(16, step)    
+window.bind("<Key>", lambda e: print("[KEYPRESS DEBUG]",e.keysym))        
 window.mainloop()
