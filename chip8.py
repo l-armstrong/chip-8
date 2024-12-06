@@ -268,7 +268,7 @@ def execute_instruction(opcode, args):
         print("register[second_nibble] + (instruction & 0x0FF) ==", register[second_nibble] + (instruction & 0x0FF))
         # register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) 
         # TODO, possible change this?
-        register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) % 256
+        register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) % 255
     elif opcode == OP.LD_XY: 
         register[second_nibble] = register[third_nibble]
     elif opcode == OP.OR_XY: 
@@ -373,8 +373,6 @@ def execute_instruction(opcode, args):
             for i, k in enumerate(keys):
                 if k:
                     register[second_nibble] = i
-
-
     elif opcode == OP.LD_DTX:
         delay_timer = register[second_nibble]
     elif opcode == OP.LD_STVX:
@@ -409,7 +407,7 @@ def execute_instruction(opcode, args):
     #     exit(1)
 
 
-with open("PONG.ch8", "rb") as f:
+with open("keypad-test.ch8", "rb") as f:
     # font_start = 200
     for char in font:
         memory[font_start] = chr(char)
@@ -537,15 +535,75 @@ def handle_keypress(e):
     """
     Map the e.keysym 
     """
-    if e.keysym == "q":
+    if e.keysym == 'x':
+        keys[0] = True
+    if e.keysym == 1:
+        keys[1] = True
+    if e.keysym == 2:
+        keys[2] = True
+    if e.keysym == 3:
         keys[3] = True
+    if e.keysym == 'q':
+        keys[4] = True
+    if e.keysym == 'w':
+        keys[5] = True
+    if e.keysym == 'e':
+        keys[6] = True
+    if e.keysym == 'a':
+        keys[7] = True
+    if e.keysym == 's':
+        keys[8] = True
+    if e.keysym == 'd':
+        keys[9] = True
+    if e.keysym == 'z':
+        keys[10] = True
+    if e.keysym == 'c':
+        keys[11] = True
+    if e.keysym == 4:
+        keys[12] = True
+    if e.keysym == 'r':
+        keys[13] = True
+    if e.keysym == 'f':
+        keys[14] = True
+    if e.keysym == 'v':
+        keys[15] = True
     print("[DEBUG]: keys", keys)
     print("[DEBUG]: event", e)
     # exit(1)
 
 def handle_keyrelease(e):
-    if e.keysym == 'q':
+    if e.keysym == 'x':
+        keys[0] = False
+    if e.keysym == 1:
+        keys[1] = False
+    if e.keysym == 2:
+        keys[2] = False
+    if e.keysym == 3:
         keys[3] = False
+    if e.keysym == 'q':
+        keys[4] = False
+    if e.keysym == 'w':
+        keys[5] = False
+    if e.keysym == 'e':
+        keys[6] = False
+    if e.keysym == 'a':
+        keys[7] = False
+    if e.keysym == 's':
+        keys[8] = False
+    if e.keysym == 'd':
+        keys[9] = False
+    if e.keysym == 'z':
+        keys[10] = False
+    if e.keysym == 'c':
+        keys[11] = False
+    if e.keysym == 4:
+        keys[12] = False
+    if e.keysym == 'r':
+        keys[13] = False
+    if e.keysym == 'f':
+        keys[14] = False
+    if e.keysym == 'v':
+        keys[15] = False
     print("[DEBUG]: keys", keys)
     print("[DEBUG]: event", e)
     # exit(1)
