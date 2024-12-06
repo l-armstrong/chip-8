@@ -21,6 +21,7 @@ screen = [0] * (64 * 32)
 # convention is 0x050–0x09F for font_start
 font_start = 200
 keys = [False] * 16
+current_down_key = None
 """
 Key layout
 1	2	3	C
@@ -265,7 +266,9 @@ def execute_instruction(opcode, args):
         print("Set Vx = Vx + kk")
         # register[args[1]] = register[args[1]] + (instruction & 0x0FF)
         print("register[second_nibble] + (instruction & 0x0FF) ==", register[second_nibble] + (instruction & 0x0FF))
-        register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) 
+        # register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) 
+        # TODO, possible change this?
+        register[second_nibble] = (register[second_nibble] + (instruction & 0x0FF)) % 256
     elif opcode == OP.LD_XY: 
         register[second_nibble] = register[third_nibble]
     elif opcode == OP.OR_XY: 
@@ -322,6 +325,7 @@ def execute_instruction(opcode, args):
         pc = register[0] + (0x0FFF & instruction)
     elif opcode == OP.RND:
         # register[args[1]] = (random.randint(0, 255) & (instruction & 0x0FF))
+    
         register[second_nibble] = (random.randint(0, 255) & (instruction & 0x0FF))
     elif opcode == OP.DRW: 
         Vx, Vy = register[second_nibble] % 64, register[third_nibble] % 32
@@ -347,15 +351,30 @@ def execute_instruction(opcode, args):
     elif opcode == OP.SKP:
         print("register[second_nibble]", register[second_nibble])
         print("register", register)
-        key_pressed = keys[register[second_nibble] - 1]
+        # TODO: change? possible off by one?
+        # key_pressed = keys[register[second_nibble] - 1]
+        key_pressed = keys[register[second_nibble]]
         if key_pressed: pc += 2
     elif opcode == OP.SKNP:
-        key_pressed = keys[register[second_nibble] - 1]
+        # TODO: change? possible off by one?
+        # key_pressed = keys[register[second_nibble] - 1]
+        key_pressed = keys[register[second_nibble]]
         if not key_pressed: pc += 2
     elif opcode == OP.LD_XDT:
         register[second_nibble] = delay_timer
     elif opcode == OP.LD_XKEY:
-        pass
+        """
+           while key is not pressed
+           check if key is pressed
+        """
+        if not any(keys):
+            pc -= 2
+        else:
+            for i, k in enumerate(keys):
+                if k:
+                    register[second_nibble] = i
+
+
     elif opcode == OP.LD_DTX:
         delay_timer = register[second_nibble]
     elif opcode == OP.LD_STVX:
@@ -383,14 +402,14 @@ def execute_instruction(opcode, args):
             element = memory[i_register + i]
             register[i] = element if isinstance(element, int) else int.from_bytes(element, 'big')
         i_register = i_register + second_nibble + 1
-    # else: raise NotImplementedError(f"Opcode {opcode} not implemented")
+    else: raise NotImplementedError(f"Opcode {opcode} not implemented")
     # if 17 in register:
     #     print("opcode:",opcode)
     #     print("register:", register)
     #     exit(1)
 
 
-with open("keypad-test.ch8", "rb") as f:
+with open("PONG.ch8", "rb") as f:
     # font_start = 200
     for char in font:
         memory[font_start] = chr(char)
@@ -409,23 +428,33 @@ R = [[1, 1, 1, 0, 0, 0, 0, 0],
      [1, 0, 0, 1, 0, 0, 0, 0]]
 
 def set_pixel(x, y, state):
-    print("y", y)
-    print("x", x)
-    print("(y * 64) + x", (y * 64) + x)
-    print("len screen:", len(screen))
-    screen[(y * 64) + x] = state
+    # print("y", y)
+    # print("x", x)
+    # print("(y * 64) + x", (y * 64) + x)
+    # print("len screen:", len(screen))
+    global VF
+    current_value = screen[(y * 64) + x]
+    if current_value and state:
+        screen[(y* 64) + x] = 0
+        # VF = 1
+    else:
+        screen[(y * 64) + x] = state
+    # screen[(y * 64) + x] = state  
 
 def draw_row(start_x, start_y, row):
     for i, x in enumerate(row): 
         set_pixel(start_x + i, start_y, x)
 
-def draw_row_n(start_x, start_y, n, row):
-    for i in range(n):
-        draw_row(start_x, start_y + i, row)
+# def draw_row_n(start_x, start_y, n, row):
+#     for i in range(n):
+#         draw_row(start_x, start_y + i, row)
 
 def draw_sprite(start_x, start_y, sprite):
     for i, row in enumerate(sprite):
         draw_row(start_x, start_y + i, row)
+
+def set_key(index, is_down):
+    keys[index] = is_down
 
 # set_pixel(0, 0, 1)
 # set_pixel(63, 0, 1)
@@ -480,13 +509,16 @@ def step():
     # decrease_time()
     # 16.67 ms ?
     # window.after(2, step)
-    window.after(16, step)
+    window.after(1, step)
 
 def draw_screen():
+    canvas.delete("all")
     for x in range(64):
         for y in range(32):
             if screen[(y * 64) + x] == 1:
                 canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='white', fill='white')
+            # else:
+            #     canvas.create_rectangle(x*16, y*16, (x+1)*16, (y+1)*16, outline='black', fill='black')
 
 def decrease_time():
     global delay_timer
@@ -500,7 +532,27 @@ def decrease_time():
  # 16.67 ms ?
 # window.after(2, step)     
 
+def handle_keypress(e):
+    print("[KEYPRESS DEBUG]", e.keysym)
+    """
+    Map the e.keysym 
+    """
+    if e.keysym == "q":
+        keys[3] = True
+    print("[DEBUG]: keys", keys)
+    print("[DEBUG]: event", e)
+    # exit(1)
+
+def handle_keyrelease(e):
+    if e.keysym == 'q':
+        keys[3] = False
+    print("[DEBUG]: keys", keys)
+    print("[DEBUG]: event", e)
+    # exit(1)
 window.after(16, decrease_time)       
-window.after(16, step)    
-window.bind("<Key>", lambda e: print("[KEYPRESS DEBUG]",e.keysym))        
+window.after(1, step)  
+# TODO: delete later  
+# window.bind("<Key>", lambda e: print("[KEYPRESS DEBUG]",e.keysym))  
+window.bind("<Key>", handle_keypress)        
+window.bind("<KeyRelease>", handle_keyrelease)
 window.mainloop()
