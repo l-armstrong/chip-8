@@ -63,14 +63,14 @@ class OP(Enum):
     CALL    = 4
     SE      = 5
     SNE     = 6 
-    SE_XY   = 7 # SE Vx, Xy
+    SE_XY   = 7    # SE Vx, Xy
     LD      = 8    # LD Vx, byte
-    ADD     = 9   # ADD Vx, byte
-    LD_XY   = 10 # LD Vx, Vy
-    OR_XY   = 11 # OR Vx, Vy
-    AND_XY  = 12 # AND Vx, Vy
-    XOR_XY  = 13 # XOR XY
-    ADD_XY  = 14 # ADD Vx, Vy
+    ADD     = 9    # ADD Vx, byte
+    LD_XY   = 10   # LD Vx, Vy
+    OR_XY   = 11   # OR Vx, Vy
+    AND_XY  = 12   # AND Vx, Vy
+    XOR_XY  = 13   # XOR XY
+    ADD_XY  = 14   # ADD Vx, Vy
     SUB_XY  = 15
     SHR     = 16
     SUBN    = 17
@@ -246,6 +246,7 @@ def execute_instruction(opcode, args):
         # if (second_nibble & 0x01): VF = 1
         # else: VF = 0
         # register[second_nibble] = register[second_nibble] >> 1
+        # TODO: seq
         register[second_nibble] = register[third_nibble]
         if register[second_nibble] & 0x01: VF = 1
         else: VF = 0
@@ -261,6 +262,7 @@ def execute_instruction(opcode, args):
         # if (second_nibble & 0x01): VF = 1
         # else: VF = 0
         # register[second_nibble] = register[second_nibble] << 1
+        # TODO: sep.
         register[second_nibble] = register[third_nibble]
         if register[second_nibble] & 0x01: VF = 1
         else: VF = 0
@@ -327,7 +329,6 @@ def execute_instruction(opcode, args):
     else: raise NotImplementedError(f"Opcode {opcode} not implemented")
 
 with open("PONG.ch8", "rb") as f:
-    f_start = font_start
     for i, char in enumerate(font):
         memory[font_start + i] = char.to_bytes(1, 'big')
     i = 512
@@ -394,14 +395,46 @@ def decrease_time():
 
 
 def handle_keypress(e):
+    # if e.keysym == 'x':
+    #     keys[0] = True
+    # elif e.keysym == '1':
+    #     keys[1] = True
+    # elif e.keysym == '2':
+    #     keys[2] = True
+    # elif e.keysym == '3':
+    #     keys[3] = True
+    # elif e.keysym == 'q':
+    #     keys[4] = True
+    # elif e.keysym == 'w':
+    #     keys[5] = True
+    # elif e.keysym == 'e':
+    #     keys[6] = True
+    # elif e.keysym == 'a':
+    #     keys[7] = True
+    # elif e.keysym == 's':
+    #     keys[8] = True
+    # elif e.keysym == 'd':
+    #     keys[9] = True
+    # elif e.keysym == 'z':
+    #     keys[10] = True
+    # elif e.keysym == 'c':
+    #     keys[11] = True
+    # elif e.keysym == '4':
+    #     keys[12] = True
+    # elif e.keysym == 'r':
+    #     keys[13] = True
+    # elif e.keysym == 'f':
+    #     keys[14] = True
+    # elif e.keysym == 'v':
+    #     keys[15] = True
     if e.keysym == 'x':
-        keys[0] = True
+        keys[0x0] = True
     elif e.keysym == '1':
-        keys[1] = True
+        keys[0x1] = True
     elif e.keysym == '2':
-        keys[2] = True
+        keys[0x2] = True
     elif e.keysym == '3':
-        keys[3] = True
+        keys[0x3] = True
     elif e.keysym == 'q':
         keys[4] = True
     elif e.keysym == 'w':
@@ -430,10 +463,15 @@ def handle_keypress(e):
     print("[DEBUG]: event", e)
 
 def handle_keyrelease(e):
+    print(e)
     if e.keysym == 'x':
         keys[0] = False
-    elif e.keysym == '1':
+    # elif e.keysym == '1':
+    #     keys[1] = False
+    elif e.char == '1':
         keys[1] = False
+        # print(e)
+        # exit(1)
     elif e.keysym == '2':
         keys[2] = False
     elif e.keysym == '3':
