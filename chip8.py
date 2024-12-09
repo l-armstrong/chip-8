@@ -5,6 +5,7 @@ Chip-8 is a interpreted programming language.
 from enum import Enum
 import random
 import tkinter as tk
+import sys
 
 max_memory = (1 << 12)
 memory = [b''] * (max_memory)  # 4096 addresses 
@@ -19,22 +20,9 @@ delay_timer = 0
 sound_timer = 0
 screen = [0] * (64 * 32) 
 # convention is 0x050–0x09F for font_start
-# font_start = 200
 font_start = 0x050
 keys = [False] * 16
 current_down_key = None
-"""
-Key layout
-1	2	3	C
-4	5	6	D
-7	8	9	E
-A	0	B	F
-
-use keyboard scancodes rather than key string constants
-"""
-window = tk.Tk()
-canvas = tk.Canvas(window, width=64*16, height=32*16)
-canvas.pack()
 
 font = [ 
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
@@ -288,12 +276,12 @@ def execute_instruction(opcode, args):
     elif opcode == OP.SKP:
         # TODO: change? possible off by one?
         # key_pressed = keys[register[second_nibble] - 1]
-        key_pressed = keys[register[second_nibble] - 1]
+        key_pressed = keys[register[second_nibble]]
         if key_pressed: pc += 2
     elif opcode == OP.SKNP:
         # TODO: change? possible off by one?
         # key_pressed = keys[register[second_nibble] - 1]
-        key_pressed = keys[register[second_nibble] - 1]
+        key_pressed = keys[register[second_nibble]]
         if not key_pressed: pc += 2
     elif opcode == OP.LD_XDT:
         register[second_nibble] = delay_timer
@@ -339,21 +327,18 @@ with open("PONG.ch8", "rb") as f:
 
 def set_pixel(x, y, state):
     global VF
-    current_value = screen[(y * 64) + x]
-    if current_value and state:
-        screen[(y* 64) + x] = 0
-        VF = 1
-    else:
-        screen[(y * 64) + x] = state
-        VF = 0
+    if ((y * 64) + x) < len(screen):
+        current_value = screen[(y * 64) + x]
+        if current_value and state:
+            screen[(y* 64) + x] = 0
+            VF = 1
+        else:
+            screen[(y * 64) + x] = state
+            VF = 0
 
 def draw_row(start_x, start_y, row):
     for i, x in enumerate(row): 
         set_pixel(start_x + i, start_y, x)
-
-# def draw_row_n(start_x, start_y, n, row):
-#     for i in range(n):
-#         draw_row(start_x, start_y + i, row)
 
 def draw_sprite(start_x, start_y, sprite):
     for i, row in enumerate(sprite):
@@ -395,38 +380,6 @@ def decrease_time():
 
 
 def handle_keypress(e):
-    # if e.keysym == 'x':
-    #     keys[0] = True
-    # elif e.keysym == '1':
-    #     keys[1] = True
-    # elif e.keysym == '2':
-    #     keys[2] = True
-    # elif e.keysym == '3':
-    #     keys[3] = True
-    # elif e.keysym == 'q':
-    #     keys[4] = True
-    # elif e.keysym == 'w':
-    #     keys[5] = True
-    # elif e.keysym == 'e':
-    #     keys[6] = True
-    # elif e.keysym == 'a':
-    #     keys[7] = True
-    # elif e.keysym == 's':
-    #     keys[8] = True
-    # elif e.keysym == 'd':
-    #     keys[9] = True
-    # elif e.keysym == 'z':
-    #     keys[10] = True
-    # elif e.keysym == 'c':
-    #     keys[11] = True
-    # elif e.keysym == '4':
-    #     keys[12] = True
-    # elif e.keysym == 'r':
-    #     keys[13] = True
-    # elif e.keysym == 'f':
-    #     keys[14] = True
-    # elif e.keysym == 'v':
-    #     keys[15] = True
     if e.keysym == 'x':
         keys[0x0] = True
     elif e.keysym == '1':
@@ -463,15 +416,10 @@ def handle_keypress(e):
     print("[DEBUG]: event", e)
 
 def handle_keyrelease(e):
-    print(e)
     if e.keysym == 'x':
         keys[0] = False
-    # elif e.keysym == '1':
-    #     keys[1] = False
-    elif e.char == '1':
+    elif e.keysym == '1':
         keys[1] = False
-        # print(e)
-        # exit(1)
     elif e.keysym == '2':
         keys[2] = False
     elif e.keysym == '3':
@@ -503,8 +451,24 @@ def handle_keyrelease(e):
     print("[DEBUG]: keys", keys)
     print("[DEBUG]: event", e)
 
-window.after(16, decrease_time)       
-window.after(1, step)  
-window.bind("<Key>", handle_keypress)        
-window.bind("<KeyRelease>", handle_keyrelease)
-window.mainloop()
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        program = sys.argv[1]
+        with open(program, "rb") as f:
+            for i, char in enumerate(font):
+                memory[font_start + i] = char.to_bytes(1, 'big')
+            i = 512
+            while (byte := f.read(1)):
+                memory[i] = byte
+                i += 1
+
+        window = tk.Tk()
+        canvas = tk.Canvas(window, width=64*16, height=32*16)
+        canvas.pack()
+        window.after(16, decrease_time)       
+        window.after(1, step)  
+        window.bind("<Key>", handle_keypress)        
+        window.bind("<KeyRelease>", handle_keyrelease)
+        window.mainloop()
+    
