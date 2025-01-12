@@ -101,12 +101,37 @@ def run_instruction(chip8: Chip8, config: Config):
     match ((chip8.inst.opcode >> 12) & 0x0F): 
         case 0x0:
             if chip8.inst.nn == 0xE0:
+                # 0x00E0: Clear screen
                 chip8.display = [0] * len(chip8.display)
+            elif chip8.inst.nn == 0xEE:
+                # 0x00EE: Return from subroutine
+                chip8.stack_ptr -= 1 # pop off address from stack
+                chip8.PC =  chip8.stack[chip8.stack_ptr]
         case 0x1:
+            # 0x1NNN: Jump to address NNN 
             chip8.PC = chip8.inst.nnn
+        case 0x02:
+            # 0x2NNN: Call subroutine
+            chip8.stack[chip8.stack_ptr] = chip8.PC # store current address on stack
+            chip8.stack_ptr += 1
+            chip8.PC = chip8.inst.nnn # manipulate PC to call subroutine
+        case 0x03:
+            # 0x3XNN: Check if VX == NN, if so, skip the next instruction
+            if chip8.V[chip8.inst.x] == chip8.inst.nn:
+                chip8.PC += 2   # Skip next opcode
+        case 0x04:
+            # 0x4XNN: Check if VX != NN, if so, skip next instruction
+            if chip8.V[chip8.inst.x] != chip8.inst.nn:
+                chip8.PC += 2   # Skip next opcode
+        case 0x05:
+            # 0x5XY0: Check if VX == VY, if so, skip next instruction
+            if chip8.V[chip8.inst.x] == chip8.V[chip8.inst.y]:
+                chip8.PC += 2   # Skip next opcode
         case 0x6:
+            # 0x6XNN: Set register VX to NN
             chip8.V[chip8.inst.x] = chip8.inst.nn
         case 0x7:
+            # 0x7XNN: Set register VX += NN
             chip8.V[chip8.inst.x] += chip8.inst.nn
         case 0xA:
             chip8.I = chip8.inst.nnn
@@ -151,10 +176,8 @@ def update_screen(chip8: Chip8, config: Config):
         rect.x = (i % config.window_width) * config.scale_factor
         rect.y = (i // config.window_width) * config.scale_factor
 
-        if (chip8.display[i]):
-            pygame.draw.rect(screen, (fg_r, fg_g, fg_b), rect)
-        else:
-            pygame.draw.rect(screen, (bg_r, bg_g, bg_b), rect)
+        if (chip8.display[i]): pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
+        else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
 
 if __name__ == '__main__': 
