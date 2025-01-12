@@ -134,29 +134,38 @@ def run_instruction(chip8: Chip8, config: Config):
             # 0x7XNN: Set register VX += NN
             chip8.V[chip8.inst.x] += chip8.inst.nn
         case 0xA:
+            # 0xANNN: Set index register I to NNN
             chip8.I = chip8.inst.nnn
         case 0xD:
+            # 0xDXYN: Draw N-height sprite at coords (x, y)
+            # Read from memory location I;
             x = chip8.V[chip8.inst.x] % config.window_width
             y = chip8.V[chip8.inst.y] % config.window_height
             orig_x = x
+            # Initialize carry flag to 0
             chip8.V[0xF] = 0
 
             for i in range(chip8.inst.n):
                 # get next byte of sprite data
                 sprite_data = chip8.ram[chip8.I + i]
                 x = orig_x  # reset x
+                # from most significant to least significant bit 
                 for j in range(7, -1, -1):
                     pixel = chip8.display[y * config.window_width + x]
                     sprite_bit = (sprite_data & (1 << j))
 
+                    # if current pixel is on and the current sprite bit is on 
+                    # set VF to 1
                     if sprite_bit and pixel: chip8.V[0xF] = 1
 
+                    # store new state to display in memory
                     chip8.display[y * config.window_width + x] ^= sprite_bit
-
                     x += 1
-                    if x >= config.window_width: break
 
+                    # if reach right edge of screen, stop drawing
+                    if x >= config.window_width: break
                 y += 1
+                # stop drawing if reach bottom edge of screen
                 if  y >= config.window_height: break
 
 def update_screen(chip8: Chip8, config: Config): 
@@ -188,7 +197,7 @@ if __name__ == '__main__':
     pygame.init()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
     clock = pygame.time.Clock()
-    chip8 = init_chip8("IBM-Logo.ch8")
+    chip8 = init_chip8("test_opcode.ch8")
 
     while chip8.state != Emulator_State.QUIT:
         handle_input(chip8)
