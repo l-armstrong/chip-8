@@ -1,14 +1,15 @@
 from enum import Enum
 import pygame
+import sys
 
 class Config(object):
-    def __init__(self, window_width, window_height, fg_color, bg_color, scale_factor, pixel_outlines):
+    def __init__(self, window_width, window_height, fg_color, bg_color, scale_factor, pixel_outlines=True):
         self.window_width = window_width
         self.window_height = window_height
         self.fg_color = fg_color
         self.bg_color = bg_color
         self.scale_factor = scale_factor
-        self.pixel_outlines - pixel_outlines
+        self.pixel_outlines = pixel_outlines
 
 class Emulator_State(Enum):
     QUIT = 0
@@ -25,17 +26,151 @@ class Instruction(object):
         self.y = y
 
 class Chip8(object):
-    def __init__(self, state, pc, rom_name, inst):
+    def __init__(self, state, pc, rom_name):
         self.state = state
         self.ram = [0] * (4096)
         self.display = [0] * (64*32)
         self.stack = [0] * (12)
         self.stack_ptr = 0
         self.V = [0] * (16)
+        self.I = 0
         self.PC = pc
         self.delay_timer = 0
         self.sound_timer = 0
         self.keypad = [0] * (16)
         self.rom_name = rom_name
-        self.inst = inst
+        self.inst = Instruction(None, None, None, None, None, None)
+
+def init_chip8(rom_name):
+    rom_entry = 0x200
+    chip8 = Chip8(state=Emulator_State.RUNNING, pc=rom_entry, rom_name=rom_name)
+    font = [
+        0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+        0x20, 0x60, 0x20, 0x20, 0x70, # 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+    ]
+    # Load font in RAM
+    for i, byte in enumerate(font):
+        chip8.ram[i] = byte
+
+    # rom = open(rom_name, "rb")
+    # for i, byte in enumerate(rom.read()):
+    #     chip8.ram[rom_entry + i] = byte
+    # Close ROM stream
+    # rom.close()
+
+    # Load ROM in RAM from ROM entry point
+    i = 0
+    with open(rom_name, "rb") as f:
+        while (byte := f.read(1)):
+            chip8.ram[rom_entry + i] = int.from_bytes(byte, byteorder="big")
+            i += 1
+    return chip8
+
+def handle_input(chip8: Chip8):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            chip8.state = Emulator_State.QUIT
+
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                chip8.state = Emulator_State.QUIT
+            
+def run_instruction(chip8: Chip8, config: Config): 
+    # get current opcode to run
+    chip8.inst.opcode = (chip8.ram[chip8.PC] << 8) | (chip8.ram[chip8.PC+1])
+    chip8.inst.nnn, chip8.inst.nn, chip8.inst.n = (chip8.inst.opcode & 0x0FFF), (chip8.inst.opcode & 0x0FF), (chip8.inst.opcode & 0x0F)
+    chip8.inst.x = (chip8.inst.opcode >> 8) & 0x0F
+    chip8.inst.y = (chip8.inst.opcode >> 4) & 0x0F
+    # increment PC for next opcode
+    chip8.PC += 2
+
+    match ((chip8.inst.opcode >> 12) & 0x0F): 
+        case 0x0:
+            if chip8.inst.nn == 0xE0:
+                chip8.display = [0] * len(chip8.display)
+        case 0x1:
+            chip8.PC = chip8.inst.nnn
+        case 0x6:
+            chip8.V[chip8.inst.x] = chip8.inst.nn
+        case 0x7:
+            chip8.V[chip8.inst.x] += chip8.inst.nn
+        case 0xA:
+            chip8.I = chip8.inst.nnn
+        case 0xD:
+            x = chip8.V[chip8.inst.x] % config.window_width
+            y = chip8.V[chip8.inst.y] % config.window_height
+            orig_x = x
+            chip8.V[0xF] = 0
+
+            for i in range(chip8.inst.n):
+                # get next byte of sprite data
+                sprite_data = chip8.ram[chip8.I + i]
+                x = orig_x  # reset x
+                for j in range(7, -1, -1):
+                    pixel = chip8.display[y * config.window_width + x]
+                    sprite_bit = (sprite_data & (1 << j))
+
+                    if sprite_bit and pixel: chip8.V[0xF] = 1
+
+                    chip8.display[y * config.window_width + x] ^= sprite_bit
+
+                    x += 1
+                    if x >= config.window_width: break
+
+                y += 1
+                if  y >= config.window_height: break
+
+def update_screen(chip8: Chip8, config: Config): 
+    rect = pygame.Rect(0, 0, config.scale_factor, config.scale_factor)
+
+    fg_r = (config.fg_color >> 24) & 0xFF
+    fg_g = (config.fg_color >> 16) & 0xFF
+    fg_b = (config.fg_color >>  8) & 0xFF
+    fg_a = (config.fg_color >>  0) & 0xFF
+
+    bg_r = (config.bg_color >> 24) & 0xFF
+    bg_g = (config.bg_color >> 16) & 0xFF
+    bg_b = (config.bg_color >>  8) & 0xFF
+    bg_a = (config.bg_color >>  0) & 0xFF
+
+    for i in range(len(chip8.display)):
+        rect.x = (i % config.window_width) * config.scale_factor
+        rect.y = (i // config.window_width) * config.scale_factor
+
+        if (chip8.display[i]):
+            pygame.draw.rect(screen, (fg_r, fg_g, fg_b), rect)
+        else:
+            pygame.draw.rect(screen, (bg_r, bg_g, bg_b), rect)
+
+
+if __name__ == '__main__': 
+    # if len(sys.argv) < 2:
+    #     print(f"Usage: {sys.argv[0]} <rom_name>")
+    #     exit(1)
+    config = Config(64, 32, 0xFFFFFFFF, 0x00000000, 20)
+    pygame.init()
+    screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
+    clock = pygame.time.Clock()
+    chip8 = init_chip8("IBM-Logo.ch8")
+
+    while chip8.state != Emulator_State.QUIT:
+        handle_input(chip8)
+        run_instruction(chip8, config)
+        update_screen(chip8, config)
+        pygame.display.flip()
+        clock.tick(60)
 
