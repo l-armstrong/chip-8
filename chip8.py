@@ -1,6 +1,7 @@
 from enum import Enum
 import pygame
 import random
+import time
 import sys
 
 class Config(object):
@@ -86,7 +87,6 @@ def handle_input(chip8: Chip8):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             chip8.state = Emulator_State.QUIT
-
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE: chip8.state = Emulator_State.QUIT
             elif event.key == pygame.K_1: chip8.keypad[0x1] = True
@@ -210,6 +210,8 @@ def run_instruction(chip8: Chip8, config: Config):
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.y] - chip8.V[chip8.inst.x]) % 256
                 case 0xE:
                     # 0x8XYE: Set register VX << 1, store shifted off bit in VF
+                    print("chip8.V[chip8.inst.x]:", chip8.V[chip8.inst.x] )
+                    print("(chip8.V[chip8.inst.x] & 0x80) >> 7", (chip8.V[chip8.inst.x] & 0x80) >> 7)
                     chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
                     chip8.V[chip8.inst.x] <<= 1
         case 0x09:
@@ -242,7 +244,6 @@ def run_instruction(chip8: Chip8, config: Config):
                 for j in range(7, -1, -1):
                     pixel = chip8.display[y * config.window_width + x]
                     sprite_bit = (sprite_data & (1 << j))
-
                     # if current pixel is on and the current sprite bit is on 
                     # set VF to 1
                     if sprite_bit and pixel: chip8.V[0xF] = 1
@@ -328,29 +329,39 @@ def update_screen(chip8: Chip8, config: Config):
         rect.x = (i % config.window_width) * config.scale_factor
         rect.y = (i // config.window_width) * config.scale_factor
 
-        if (chip8.display[i]): pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
+        if (chip8.display[i]): 
+            pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
+            if config.pixel_outlines:
+                # pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
+                pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
         else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
+def update_timer(chip8: Chip8):
+    if chip8.delay_timer > 0: chip8.delay_timer -= 1
+    if chip8.sound_timer > 0: chip8.sound_timer -= 1
 
 if __name__ == '__main__': 
-    # if len(sys.argv) < 2:
-    #     print(f"Usage: {sys.argv[0]} <rom_name>")
-    #     exit(1)
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <rom_name>")
+        exit(1)
     config = Config(64, 32, 0xFFFFFFFF, 0x00000000, 20)
     pygame.init()
+    start_time = pygame.time.get_ticks()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
     clock = pygame.time.Clock()
-    chip8 = init_chip8("Breakout.ch8")
+    chip8 = init_chip8(sys.argv[1])
+    random.seed(time.time())
 
     while chip8.state != Emulator_State.QUIT:
         handle_input(chip8)
-        start_time = pygame.time.get_ticks()
         for i in range(config.insts_per_second // 60):
             run_instruction(chip8, config)
-        end_time = pygame.time.get_ticks()
-#        pygame.time.delay()
-        screen.fill("black")
+        end_time = pygame.time.get_ticks() - start_time
+
+        # clock.tick(60)
+        screen.fill("black")  
+        delta_time = (end_time - start_time) / 1000.0
+        pygame.time.delay(int(16.67 - delta_time if (16.67 > delta_time) else 0))
         update_screen(chip8, config)
         pygame.display.flip()
-        clock.tick(60)
-
+        update_timer(chip8)
