@@ -133,6 +133,43 @@ def run_instruction(chip8: Chip8, config: Config):
         case 0x7:
             # 0x7XNN: Set register VX += NN
             chip8.V[chip8.inst.x] += chip8.inst.nn
+        case 0x08:
+            # ALU OP codes
+            match chip8.inst.n:
+                case 0x0:
+                    # 0x8XY0: Set register VX = VY
+                    chip8.V[chip8.inst.x] = chip8.V[chip8.inst.y]
+                case 0x1:
+                    # 0x8XY1: Set register VX |= VY
+                    chip8.V[chip8.inst.x] |= chip8.V[chip8.inst.y]
+                case 0x2:
+                    # 0x8XY2: Set register VX &= VY
+                    chip8.V[chip8.inst.x] &= chip8.V[chip8.inst.y]
+                case 0x3:
+                    # 0x8XY3: Set register VX ^= VY
+                    chip8.V[chip8.inst.x] ^= chip8.V[chip8.inst.y]
+                case 0x4:
+                    # 0x8XY4: Set register VX += VY, set VF to 1 if carry
+                    if (chip8.V[chip8.inst.x] + chip8.V[chip8.y]) > 255:
+                        chip8.V[0xF] = 1
+                    chip8.V[chip8.inst.x] += chip8.v[chip8.inst.y]
+                case 0x5:
+                    # 0x8XY5: Set register VX -= 1, set VF to 1 if result is positive
+                    chip8.V[0xF] = chip8.V[chip8.inst.y] <= chip8.v[chip8.inst.x]
+                    chip8.V[chip8.inst.x] -= chip8.V[chip8.inst.y]
+                case 0x6:
+                    # 0x8XY6: Set register VX >> 1, Store shifted off but in VF
+                    chip8.V[0xF] = chip8.V[chip8.inst.x] & 1
+                    chip8.V[chip8.inst.x] >>= 1
+                case 0x7:
+                    # 0x8XY7: Set register VX = VY - VX, set VF to 1 if result is positive
+                    chip8.V[0xF] = chip8.V[chip8.inst.x] <= chip8.v[chip8.inst.y]
+                    chip8.V[chip8.inst.x] = chip8.v[chip8.inst.y] - chip8.V[chip8.inst.x]
+                case 0xE:
+                    # 0x8XYE: Set register VX << 1, store shifted off bit in VF
+                    chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
+                    chip8.V[chip8.inst.x] <<= 1
+                
         case 0xA:
             # 0xANNN: Set index register I to NNN
             chip8.I = chip8.inst.nnn
