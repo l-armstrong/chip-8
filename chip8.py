@@ -1,5 +1,6 @@
 from enum import Enum
 import pygame
+import random
 import sys
 
 class Config(object):
@@ -169,10 +170,18 @@ def run_instruction(chip8: Chip8, config: Config):
                     # 0x8XYE: Set register VX << 1, store shifted off bit in VF
                     chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
                     chip8.V[chip8.inst.x] <<= 1
-                
-        case 0xA:
+        case 0x09:
+            # 0x9XY0: Check if VX != VY; Skip next instruction if so
+            if (chip8.V[chip8.inst.x] != chip8.V[chip8.inst.y]): chip8.PC +=2
+        case 0x0A:
             # 0xANNN: Set index register I to NNN
             chip8.I = chip8.inst.nnn
+        case 0x0B:
+            # 0xBNNN: Jump to V0 + NNN
+            chip8.PC = chip8.V[0] + chip8.inst.nnn
+        case 0x0C:
+            # 0xCXNN: Sets register VX = rand() % 256 & NN (bitwise AND)
+            chip8.V[chip8.inst.x] = (random.randint(0, sys.maxsize) % 256) & chip8.inst.nn
         case 0xD:
             # 0xDXYN: Draw N-height sprite at coords (x, y)
             # Read from memory location I;
