@@ -108,7 +108,7 @@ def run_instruction(chip8: Chip8, config: Config):
                 # 0x00EE: Return from subroutine
                 chip8.stack_ptr -= 1 # pop off address from stack
                 chip8.PC =  chip8.stack[chip8.stack_ptr]
-        case 0x1:
+        case 0x01:
             # 0x1NNN: Jump to address NNN 
             chip8.PC = chip8.inst.nnn
         case 0x02:
@@ -128,10 +128,10 @@ def run_instruction(chip8: Chip8, config: Config):
             # 0x5XY0: Check if VX == VY, if so, skip next instruction
             if chip8.V[chip8.inst.x] == chip8.V[chip8.inst.y]:
                 chip8.PC += 2   # Skip next opcode
-        case 0x6:
+        case 0x06:
             # 0x6XNN: Set register VX to NN
             chip8.V[chip8.inst.x] = chip8.inst.nn
-        case 0x7:
+        case 0x07:
             # 0x7XNN: Set register VX += NN
             chip8.V[chip8.inst.x] += chip8.inst.nn
         case 0x08:
@@ -182,7 +182,7 @@ def run_instruction(chip8: Chip8, config: Config):
         case 0x0C:
             # 0xCXNN: Sets register VX = rand() % 256 & NN (bitwise AND)
             chip8.V[chip8.inst.x] = (random.randint(0, sys.maxsize) % 256) & chip8.inst.nn
-        case 0xD:
+        case 0x0D:
             # 0xDXYN: Draw N-height sprite at coords (x, y)
             # Read from memory location I;
             x = chip8.V[chip8.inst.x] % config.window_width
@@ -213,7 +213,15 @@ def run_instruction(chip8: Chip8, config: Config):
                 y += 1
                 # stop drawing if reach bottom edge of screen
                 if  y >= config.window_height: break
-
+        case 0x0E:
+            if chip8.inst.nn == 0x9E:
+                # 0xEX9E: Skip next instruxtion if key in VX is pressed
+                if chip8.keypad[chip8.V[chip8.inst.x]]:
+                    chip8.PC += 2
+            elif chip8.inst.nn == 0xA1:
+                # 0xEXA1: Skip next instruction if key in VX is not pressed
+                if not chip8.keypad[chip8.V[chip8.inst.x]]:
+                    chip8.PC += 2
 def update_screen(chip8: Chip8, config: Config): 
     rect = pygame.Rect(0, 0, config.scale_factor, config.scale_factor)
 
