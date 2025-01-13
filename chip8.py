@@ -4,13 +4,14 @@ import random
 import sys
 
 class Config(object):
-    def __init__(self, window_width, window_height, fg_color, bg_color, scale_factor, pixel_outlines=True):
+    def __init__(self, window_width, window_height, fg_color, bg_color, scale_factor, pixel_outlines=True, insts_per_second=500):
         self.window_width = window_width
         self.window_height = window_height
         self.fg_color = fg_color
         self.bg_color = bg_color
         self.scale_factor = scale_factor
         self.pixel_outlines = pixel_outlines
+        self.insts_per_second = insts_per_second
 
 class Emulator_State(Enum):
     QUIT = 0
@@ -87,8 +88,47 @@ def handle_input(chip8: Chip8):
             chip8.state = Emulator_State.QUIT
 
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                chip8.state = Emulator_State.QUIT
+            if event.key == pygame.K_ESCAPE: chip8.state = Emulator_State.QUIT
+            elif event.key == pygame.K_1: chip8.keypad[0x1] = True
+            elif event.key == pygame.K_2: chip8.keypad[0x2] = True
+            elif event.key == pygame.K_3: chip8.keypad[0x3] = True
+            elif event.key == pygame.K_4: chip8.keypad[0xC] = True
+
+            elif event.key == pygame.K_q: chip8.keypad[0x4] = True
+            elif event.key == pygame.K_w: chip8.keypad[0x5] = True
+            elif event.key == pygame.K_e: chip8.keypad[0x6] = True
+            elif event.key == pygame.K_r: chip8.keypad[0xD] = True
+
+            elif event.key == pygame.K_a: chip8.keypad[0x7] = True
+            elif event.key == pygame.K_s: chip8.keypad[0x8] = True
+            elif event.key == pygame.K_d: chip8.keypad[0x9] = True
+            elif event.key == pygame.K_f: chip8.keypad[0xE] = True
+
+            elif event.key == pygame.K_z: chip8.keypad[0xA] = True
+            elif event.key == pygame.K_x: chip8.keypad[0x0] = True
+            elif event.key == pygame.K_c: chip8.keypad[0xB] = True
+            elif event.key == pygame.K_v: chip8.keypad[0xF] = True
+
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_1: chip8.keypad[0x1] = False
+            elif event.key == pygame.K_2: chip8.keypad[0x2] = False
+            elif event.key == pygame.K_3: chip8.keypad[0x3] = False
+            elif event.key == pygame.K_4: chip8.keypad[0xC] = False
+
+            elif event.key == pygame.K_q: chip8.keypad[0x4] = False
+            elif event.key == pygame.K_w: chip8.keypad[0x5] = False
+            elif event.key == pygame.K_e: chip8.keypad[0x6] = False
+            elif event.key == pygame.K_r: chip8.keypad[0xD] = False
+
+            elif event.key == pygame.K_a: chip8.keypad[0x7] = False
+            elif event.key == pygame.K_s: chip8.keypad[0x8] = False
+            elif event.key == pygame.K_d: chip8.keypad[0x9] = False
+            elif event.key == pygame.K_f: chip8.keypad[0xE] = False
+
+            elif event.key == pygame.K_z: chip8.keypad[0xA] = False
+            elif event.key == pygame.K_x: chip8.keypad[0x0] = False
+            elif event.key == pygame.K_c: chip8.keypad[0xB] = False
+            elif event.key == pygame.K_v: chip8.keypad[0xF] = False
             
 def run_instruction(chip8: Chip8, config: Config): 
     # get current opcode to run
@@ -108,6 +148,8 @@ def run_instruction(chip8: Chip8, config: Config):
                 # 0x00EE: Return from subroutine
                 chip8.stack_ptr -= 1 # pop off address from stack
                 chip8.PC =  chip8.stack[chip8.stack_ptr]
+            else:
+                print(f"Invalid Opcode {chip8.inst.opcode}")
         case 0x01:
             # 0x1NNN: Jump to address NNN 
             chip8.PC = chip8.inst.nnn
@@ -160,7 +202,7 @@ def run_instruction(chip8: Chip8, config: Config):
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] - chip8.V[chip8.inst.y]) % 256
                 case 0x6:
                     # 0x8XY6: Set register VX >> 1, Store shifted off bit in VF
-                    chip8.V[0xF] = (chip8.V[chip8.inst.x]) & 1
+                    chip8.V[0xF] = chip8.V[chip8.inst.x] & 1
                     chip8.V[chip8.inst.x] >>= 1
                 case 0x7:
                     # 0x8XY7: Set register VX = VY - VX, set VF to 1 if result is positive
@@ -173,8 +215,6 @@ def run_instruction(chip8: Chip8, config: Config):
         case 0x09:
             # 0x9XY0: Check if VX != VY; Skip next instruction if so
             if chip8.V[chip8.inst.x] != chip8.V[chip8.inst.y]: 
-                print("DEBUG: chip8.V[chip8.inst.x]", chip8.V[chip8.inst.x])
-                print("DEBUG: chip8.V[chip8.inst.y]", chip8.V[chip8.inst.y])
                 chip8.PC +=2
         case 0x0A:
             # 0xANNN: Set index register I to NNN
@@ -284,7 +324,7 @@ def update_screen(chip8: Chip8, config: Config):
     bg_b = (config.bg_color >>  8) & 0xFF
     bg_a = (config.bg_color >>  0) & 0xFF
 
-    for i in range(len(chip8.display)):
+    for i in range(len(chip8.display)): 
         rect.x = (i % config.window_width) * config.scale_factor
         rect.y = (i // config.window_width) * config.scale_factor
 
@@ -300,11 +340,16 @@ if __name__ == '__main__':
     pygame.init()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
     clock = pygame.time.Clock()
-    chip8 = init_chip8("test_opcode.ch8")
+    chip8 = init_chip8("Breakout.ch8")
 
     while chip8.state != Emulator_State.QUIT:
         handle_input(chip8)
-        run_instruction(chip8, config)
+        start_time = pygame.time.get_ticks()
+        for i in range(config.insts_per_second // 60):
+            run_instruction(chip8, config)
+        end_time = pygame.time.get_ticks()
+#        pygame.time.delay()
+        screen.fill("black")
         update_screen(chip8, config)
         pygame.display.flip()
         clock.tick(60)
