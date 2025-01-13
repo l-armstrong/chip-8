@@ -44,7 +44,7 @@ class Chip8(object):
         self.rom_name = rom_name
         self.inst = Instruction(None, None, None, None, None, None)
 
-def init_chip8(rom_name):
+def init_chip8(rom_name: str) -> Chip8:
     rom_entry = 0x200
     chip8 = Chip8(state=Emulator_State.RUNNING, pc=rom_entry, rom_name=rom_name)
     font = [
@@ -187,25 +187,29 @@ def run_instruction(chip8: Chip8, config: Config):
                     chip8.V[chip8.inst.x] ^= chip8.V[chip8.inst.y]
                 case 0x4:
                     # 0x8XY4: Set register VX += VY, set VF to 1 if carry
-                    if (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) > 255:
-                        chip8.V[0xF] = 1
+                    carry = (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) > 255
                     chip8.V[chip8.inst.x] =  (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) % 256
+                    chip8.V[0xF] = carry
                 case 0x5:
                     # 0x8XY5: Set register VX -= 1, set VF to 1 if result is positive
-                    chip8.V[0xF] = 1 if chip8.V[chip8.inst.y] <= chip8.V[chip8.inst.x] else 0
+                    carry = chip8.V[chip8.inst.y] <= chip8.V[chip8.inst.x]
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] - chip8.V[chip8.inst.y]) % 256
+                    chip8.V[0xF] = carry
                 case 0x6:
                     # 0x8XY6: Set register VX >> 1, Store shifted off bit in VF
-                    chip8.V[0xF] = chip8.V[chip8.inst.x] & 1
+                    least_significant_bit = chip8.V[chip8.inst.x] & 1
                     chip8.V[chip8.inst.x] >>= 1
+                    chip8.V[0xF] = least_significant_bit
                 case 0x7:
                     # 0x8XY7: Set register VX = VY - VX, set VF to 1 if result is positive
-                    chip8.V[0xF] = 1 if chip8.V[chip8.inst.x] <= chip8.V[chip8.inst.y] else 0
+                    carry = chip8.V[chip8.inst.x] <= chip8.V[chip8.inst.y]
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.y] - chip8.V[chip8.inst.x]) % 256
+                    chip8.V[0xF] = carry
                 case 0xE:
                     # 0x8XYE: Set register VX << 1, store shifted off bit in VF
-                    chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
+                    most_significant_bit = (chip8.V[chip8.inst.x] & 0x80) >> 7
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] << 1) % 256
+                    chip8.V[0xF] = most_significant_bit
         case 0x09:
             # 0x9XY0: Check if VX != VY; Skip next instruction if so
             if chip8.V[chip8.inst.x] != chip8.V[chip8.inst.y]: 
@@ -323,8 +327,7 @@ def update_screen(chip8: Chip8, config: Config):
 
         if (chip8.display[i]): 
             pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
-            if config.pixel_outlines:
-                pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
+            if config.pixel_outlines: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
         else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
 def update_timer(chip8: Chip8):
