@@ -222,6 +222,52 @@ def run_instruction(chip8: Chip8, config: Config):
                 # 0xEXA1: Skip next instruction if key in VX is not pressed
                 if not chip8.keypad[chip8.V[chip8.inst.x]]:
                     chip8.PC += 2
+        case 0x0F:
+            match chip8.inst.nn:
+                case 0x0A:
+                    # 0xFX0A: VX = get_key(); Await until a keypress, and store in VX
+                    key_pressed = False
+                    # i is the offset into the keypad
+                    for i in range(len(chip8.keypad)):
+                        if chip8.keypad[i]:
+                            chip8.V[chip8.inst.x] = i
+                            key_pressed = True
+                            break
+                    # if no tkey has been pressed, run this instruction again 
+                    if not key_pressed: chip8.PC -=2
+                case 0x1E:
+                    # 0xFX1E: I += VX; add VX to register I. 
+                    chip8.I += chip8.V[chip8.inst.x]
+                case 0x07:
+                    # 0xF07: VX = delay_timer
+                    chip8.V[chip8.inst.x] = chip8.delay_timer
+                case 0x15:
+                    # 0xFX15: delay_timer = VX
+                    chip8.delay_timer = chip8.V[chip8.inst.x]
+                case 0x18:
+                    # 0xFX18: sound_timer = VX
+                    chip8.sound_timer = chip8.V[chip8.inst.x]
+                case 0x29:
+                    # 0xFX29: Set register I to sprite location in memory for character in VX (0x0-0xF)
+                    chip8.I = chip8.V[chip8.inst.x] * 5
+                case 0x33:
+                    # 0xFX33: Store BCD representation of VX at memory offset from I
+                    #   I = hundred's place, I+1 = ten's place, I+2 one's
+                    bcd = chip8.V[chip8.inst.x]
+                    chip8.ram[chip8.I+2] = bcd % 10
+                    bcd /= 10
+                    chip8.ram[chip8.I+1] = bcd % 10
+                    bcd /= 10
+                    chip8.ram[chip8.I] = bcd
+                case 0x55:
+                    # 0xFX55: Register dump V0-VX inclusive to memory offset from I
+                    for i in range(chip8.inst.x + 1):
+                        chip8.ram[chip8.I + i] = chip8.V[i]
+                case 0x65:
+                    # 0xFX65: Register load V0-VX inclusive to memory offset from I
+                    for i in range(chip8.inst.x + 1):
+                        chip8.V[i] = chip8.ram[chip8.I + i]
+                
 def update_screen(chip8: Chip8, config: Config): 
     rect = pygame.Rect(0, 0, config.scale_factor, config.scale_factor)
 
