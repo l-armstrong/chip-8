@@ -266,15 +266,21 @@ def run_instruction(chip8: Chip8, config: Config):
             match chip8.inst.nn:
                 case 0x0A:
                     # 0xFX0A: VX = get_key(); Await until a keypress, and store in VX
-                    key_pressed = False
-                    # i is the offset into the keypad
-                    for i in range(len(chip8.keypad)):
-                        if chip8.keypad[i]:
+                    if any(chip8.keypad):
+                        indexes = [i for i, x in enumerate(chip8.keypad) if x]
+                        key_idx = indexes[0]
+                        if not chip8.keypad[key_idx]:
                             chip8.V[chip8.inst.x] = i
-                            key_pressed = True
-                            break
-                    # if no tkey has been pressed, run this instruction again 
-                    if not key_pressed: chip8.PC -=2
+                    else:
+                        key_pressed = False
+                        # i is the offset into the keypad
+                        for i in range(len(chip8.keypad)):
+                            if chip8.keypad[i]:
+                                chip8.V[chip8.inst.x] = i
+                                key_pressed = True
+                                break
+                        # if no tkey has been pressed, run this instruction again 
+                        if not key_pressed: chip8.PC -=2
                 case 0x1E:
                     # 0xFX1E: I += VX; add VX to register I. 
                     chip8.I += chip8.V[chip8.inst.x]
@@ -359,3 +365,4 @@ if __name__ == '__main__':
         update_screen(chip8, config)
         pygame.display.flip()
         update_timer(chip8)
+        clock.tick(60)
