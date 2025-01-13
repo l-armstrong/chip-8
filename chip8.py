@@ -69,12 +69,6 @@ def init_chip8(rom_name):
     for i, byte in enumerate(font):
         chip8.ram[i] = byte
 
-    # rom = open(rom_name, "rb")
-    # for i, byte in enumerate(rom.read()):
-    #     chip8.ram[rom_entry + i] = byte
-    # Close ROM stream
-    # rom.close()
-
     # Load ROM in RAM from ROM entry point
     i = 0
     with open(rom_name, "rb") as f:
@@ -210,10 +204,8 @@ def run_instruction(chip8: Chip8, config: Config):
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.y] - chip8.V[chip8.inst.x]) % 256
                 case 0xE:
                     # 0x8XYE: Set register VX << 1, store shifted off bit in VF
-                    print("chip8.V[chip8.inst.x]:", chip8.V[chip8.inst.x] )
-                    print("(chip8.V[chip8.inst.x] & 0x80) >> 7", (chip8.V[chip8.inst.x] & 0x80) >> 7)
                     chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
-                    chip8.V[chip8.inst.x] <<= 1
+                    chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] << 1) % 256
         case 0x09:
             # 0x9XY0: Check if VX != VY; Skip next instruction if so
             if chip8.V[chip8.inst.x] != chip8.V[chip8.inst.y]: 
@@ -332,7 +324,6 @@ def update_screen(chip8: Chip8, config: Config):
         if (chip8.display[i]): 
             pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
             if config.pixel_outlines:
-                # pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
                 pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
         else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
