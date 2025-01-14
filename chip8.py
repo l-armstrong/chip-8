@@ -1,6 +1,7 @@
 from enum import Enum
 import pygame
 import random
+import time
 import sys
 
 class Config(object):
@@ -43,7 +44,7 @@ class Chip8(object):
         self.rom_name = rom_name
         self.inst = Instruction(None, None, None, None, None, None)
 
-def init_chip8(rom_name):
+def init_chip8(rom_name: str) -> Chip8:
     rom_entry = 0x200
     chip8 = Chip8(state=Emulator_State.RUNNING, pc=rom_entry, rom_name=rom_name)
     font = [
@@ -68,12 +69,6 @@ def init_chip8(rom_name):
     for i, byte in enumerate(font):
         chip8.ram[i] = byte
 
-    # rom = open(rom_name, "rb")
-    # for i, byte in enumerate(rom.read()):
-    #     chip8.ram[rom_entry + i] = byte
-    # Close ROM stream
-    # rom.close()
-
     # Load ROM in RAM from ROM entry point
     i = 0
     with open(rom_name, "rb") as f:
@@ -86,7 +81,6 @@ def handle_input(chip8: Chip8):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             chip8.state = Emulator_State.QUIT
-
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE: chip8.state = Emulator_State.QUIT
             elif event.key == pygame.K_1: chip8.keypad[0x1] = True
@@ -193,25 +187,29 @@ def run_instruction(chip8: Chip8, config: Config):
                     chip8.V[chip8.inst.x] ^= chip8.V[chip8.inst.y]
                 case 0x4:
                     # 0x8XY4: Set register VX += VY, set VF to 1 if carry
-                    if (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) > 255:
-                        chip8.V[0xF] = 1
+                    carry = (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) > 255
                     chip8.V[chip8.inst.x] =  (chip8.V[chip8.inst.x] + chip8.V[chip8.inst.y]) % 256
+                    chip8.V[0xF] = carry
                 case 0x5:
                     # 0x8XY5: Set register VX -= 1, set VF to 1 if result is positive
-                    chip8.V[0xF] = 1 if chip8.V[chip8.inst.y] <= chip8.V[chip8.inst.x] else 0
+                    carry = chip8.V[chip8.inst.y] <= chip8.V[chip8.inst.x]
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] - chip8.V[chip8.inst.y]) % 256
+                    chip8.V[0xF] = carry
                 case 0x6:
                     # 0x8XY6: Set register VX >> 1, Store shifted off bit in VF
-                    chip8.V[0xF] = chip8.V[chip8.inst.x] & 1
+                    least_significant_bit = chip8.V[chip8.inst.x] & 1
                     chip8.V[chip8.inst.x] >>= 1
+                    chip8.V[0xF] = least_significant_bit
                 case 0x7:
                     # 0x8XY7: Set register VX = VY - VX, set VF to 1 if result is positive
-                    chip8.V[0xF] = 1 if chip8.V[chip8.inst.x] <= chip8.V[chip8.inst.y] else 0
+                    carry = chip8.V[chip8.inst.x] <= chip8.V[chip8.inst.y]
                     chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.y] - chip8.V[chip8.inst.x]) % 256
+                    chip8.V[0xF] = carry
                 case 0xE:
                     # 0x8XYE: Set register VX << 1, store shifted off bit in VF
-                    chip8.V[0xF] = (chip8.V[chip8.inst.x] & 0x80) >> 7
-                    chip8.V[chip8.inst.x] <<= 1
+                    most_significant_bit = (chip8.V[chip8.inst.x] & 0x80) >> 7
+                    chip8.V[chip8.inst.x] = (chip8.V[chip8.inst.x] << 1) % 256
+                    chip8.V[0xF] = most_significant_bit
         case 0x09:
             # 0x9XY0: Check if VX != VY; Skip next instruction if so
             if chip8.V[chip8.inst.x] != chip8.V[chip8.inst.y]: 
@@ -242,7 +240,6 @@ def run_instruction(chip8: Chip8, config: Config):
                 for j in range(7, -1, -1):
                     pixel = chip8.display[y * config.window_width + x]
                     sprite_bit = (sprite_data & (1 << j))
-
                     # if current pixel is on and the current sprite bit is on 
                     # set VF to 1
                     if sprite_bit and pixel: chip8.V[0xF] = 1
@@ -269,15 +266,21 @@ def run_instruction(chip8: Chip8, config: Config):
             match chip8.inst.nn:
                 case 0x0A:
                     # 0xFX0A: VX = get_key(); Await until a keypress, and store in VX
-                    key_pressed = False
-                    # i is the offset into the keypad
-                    for i in range(len(chip8.keypad)):
-                        if chip8.keypad[i]:
+                    if any(chip8.keypad):
+                        indexes = [i for i, x in enumerate(chip8.keypad) if x]
+                        key_idx = indexes[0]
+                        if not chip8.keypad[key_idx]:
                             chip8.V[chip8.inst.x] = i
-                            key_pressed = True
-                            break
-                    # if no tkey has been pressed, run this instruction again 
-                    if not key_pressed: chip8.PC -=2
+                    else:
+                        key_pressed = False
+                        # i is the offset into the keypad
+                        for i in range(len(chip8.keypad)):
+                            if chip8.keypad[i]:
+                                chip8.V[chip8.inst.x] = i
+                                key_pressed = True
+                                break
+                        # if no tkey has been pressed, run this instruction again 
+                        if not key_pressed: chip8.PC -=2
                 case 0x1E:
                     # 0xFX1E: I += VX; add VX to register I. 
                     chip8.I += chip8.V[chip8.inst.x]
@@ -328,29 +331,38 @@ def update_screen(chip8: Chip8, config: Config):
         rect.x = (i % config.window_width) * config.scale_factor
         rect.y = (i // config.window_width) * config.scale_factor
 
-        if (chip8.display[i]): pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
+        if (chip8.display[i]): 
+            pygame.draw.rect(screen, (fg_r, fg_g, fg_b, fg_a), rect)
+            if config.pixel_outlines: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
         else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
+def update_timer(chip8: Chip8):
+    if chip8.delay_timer > 0: chip8.delay_timer -= 1
+    if chip8.sound_timer > 0: chip8.sound_timer -= 1
 
 if __name__ == '__main__': 
-    # if len(sys.argv) < 2:
-    #     print(f"Usage: {sys.argv[0]} <rom_name>")
-    #     exit(1)
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <rom_name>")
+        exit(1)
     config = Config(64, 32, 0xFFFFFFFF, 0x00000000, 20)
     pygame.init()
+    start_time = pygame.time.get_ticks()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
     clock = pygame.time.Clock()
-    chip8 = init_chip8("Breakout.ch8")
+    chip8 = init_chip8(sys.argv[1])
+    random.seed(time.time())
 
     while chip8.state != Emulator_State.QUIT:
         handle_input(chip8)
-        start_time = pygame.time.get_ticks()
         for i in range(config.insts_per_second // 60):
             run_instruction(chip8, config)
-        end_time = pygame.time.get_ticks()
-#        pygame.time.delay()
-        screen.fill("black")
+        end_time = pygame.time.get_ticks() - start_time
+
+        # clock.tick(60)
+        screen.fill("black")  
+        delta_time = (end_time - start_time) / 1000.0
+        pygame.time.delay(int(16.67 - delta_time if (16.67 > delta_time) else 0))
         update_screen(chip8, config)
         pygame.display.flip()
+        update_timer(chip8)
         clock.tick(60)
-
