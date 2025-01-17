@@ -1,3 +1,2 @@
-*.ch8
-/images/*.png
+.DS_Store
 *.png
