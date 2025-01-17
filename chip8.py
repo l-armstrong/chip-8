@@ -189,7 +189,7 @@ def run_instruction(chip8: Chip8, config: Config):
                 case 0x2:
                     # 0x8XY2: Set register VX &= VY
                     chip8.V[chip8.inst.x] &= chip8.V[chip8.inst.y]
-                    if config.emulator_type == Emulator_Type.CHIP8: chip8.V[0xF] = 0
+                    if config.emulator_type == Emulator_Type.CHIP8: chip8.V[0xF] = 0   
                 case 0x3:
                     # 0x8XY3: Set register VX ^= VY
                     chip8.V[chip8.inst.x] ^= chip8.V[chip8.inst.y]
@@ -296,17 +296,8 @@ def run_instruction(chip8: Chip8, config: Config):
                                 chip8.V[chip8.inst.x] = i
                                 key_pressed = True
                                 break
-                        # if no tkey has been pressed, run this instruction again 
+                    # if no tkey has been pressed, run this instruction again 
                         if not key_pressed: chip8.PC -=2
-                    # key_pressed = False
-                    # # i is the offset into the keypad
-                    # for i in range(len(chip8.keypad)):
-                    #     if chip8.keypad[i]:
-                    #         chip8.V[chip8.inst.x] = i
-                    #         key_pressed = True
-                    #         break
-                    #     # if no tkey has been pressed, run this instruction again 
-                    # if not key_pressed: chip8.PC -=2
                 case 0x1E:
                     # 0xFX1E: I += VX; add VX to register I. 
                     chip8.I += chip8.V[chip8.inst.x]
@@ -376,7 +367,6 @@ def update_timer(chip8: Chip8):
     else:
         beep.stop()
     
-
 if __name__ == '__main__': 
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <rom_name>")
@@ -384,7 +374,7 @@ if __name__ == '__main__':
     config = Config(64, 32, 0xFFFFFFFF, 0x00000000, 20)
     pygame.init()
     pygame.mixer.pre_init(44100, -16, 1, 2048)
-    beep = pygame.mixer.Sound('a.ogg')
+    beep = pygame.mixer.Sound('./sound/a.ogg')
     beep.set_volume(1.0)
     start_time = pygame.time.get_ticks()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
@@ -397,14 +387,10 @@ if __name__ == '__main__':
         for i in range(config.insts_per_second // 60):
             run_instruction(chip8, config)
         end_time = pygame.time.get_ticks() - start_time
-
-        # clock.tick(60)
         screen.fill("black")  
-        # delta_time = (end_time - start_time) / 1000.0
         delta_time = ((end_time - start_time) * 1000.0) / pygame.time.get_ticks()
         pygame.time.delay(int(16.67 - delta_time if (16.67 > delta_time) else 0))
         update_screen(chip8, config)
         pygame.display.flip()
         update_timer(chip8)
         clock.tick(60)
-    
