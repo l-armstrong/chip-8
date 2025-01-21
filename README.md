@@ -32,7 +32,7 @@ Registers
 |ST	|byte	|Sound timer|
 
 Keypad
-|-|-|-|-|
+|x|x|x|x|
 |:--|:--|:--|:--|
 |1	|2	|3	|C|
 |4	|5	|6	|D|
