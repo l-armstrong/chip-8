@@ -434,7 +434,6 @@ if __name__ == '__main__':
         for i in range(config.insts_per_second // 60):
             run_instruction(chip8, config)
         end_time = pygame.time.get_ticks() - start_time
-        # screen.fill("black")  
         delta_time = ((end_time - start_time) * 1000.0) / pygame.time.get_ticks()
         pygame.time.delay(int(16.67 - delta_time if (16.67 > delta_time) else 0))
         update_screen(chip8, config)
