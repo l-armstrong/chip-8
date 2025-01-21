@@ -32,6 +32,7 @@ Registers
 |ST	|byte	|Sound timer|
 
 Keypad
+| | | | |
 |:--|:--|:--|:--|
 |1	|2	|3	|C|
 |4	|5	|6	|D|
