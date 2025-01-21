@@ -3,7 +3,7 @@
 
 CHIP-8 was created by developed by Joseph Weisbecker for the COSMAC VIP microcomputer.
 
-deployed: 
+Playable games in the browser using this emulator: 
 - [tetris](https://larmstrong.itch.io/tetris)
 - [pong](https://larmstrong.itch.io/pong)
 - [breakout](https://larmstrong.itch.io/breakout)
@@ -26,9 +26,9 @@ My Key Mapping (QWERTY)
 |a	|s	|d	|f|
 |z	|x	|c	|v|
 
-RESTART game: <Enter>
-Decrease Volume: <o>
-Increase Volume: <p>
+RESTART game: ENTER
+Decrease Volume: o
+Increase Volume: p
 
 
 Virtual Machine Spec
@@ -53,13 +53,13 @@ Registers
 |ST	|byte	|Sound timer|
 
 
-CHIP-8 Key Mapping      My Key Mapping (QWERTY)          
-| | | | |               | | | | |
-|:--|:--|:--|:--|       |:--|:--|:--|:--|
-|1	|2	|3	|C|         |1	|2	|3	|4|
-|4	|5	|6	|D|         |q	|w	|e	|r|
-|7	|8	|9	|E|         |a	|s	|d	|f|
-|A	|0	|B	|F|         |z	|x	|c	|v|
+CHIP-8 Key Mapping              
+| | | | |               
+|:--|:--|:--|:--|      
+|1	|2	|3	|C|      
+|4	|5	|6	|D|        
+|7	|8	|9	|E|         
+|A	|0	|B	|F|         
 
 
 Screen
