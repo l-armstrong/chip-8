@@ -26,22 +26,21 @@ My Key Mapping (QWERTY)
 |a	|s	|d	|f|
 |z	|x	|c	|v|
 
-RESTART game: ENTER
-Decrease Volume: o
-Increase Volume: p
+RESTART Game: ENTER  
+Decrease Volume: o  
+Increase Volume: p  
 
 
-Virtual Machine Spec
+Virtual Machine Spec  
 
-
-Memory
+Memory  
 
 CHIP-8 can address up to 4KB(4096 bytes) of RAM from location 0x000 to 0xFFF.
 
 The first 512 bytes, 0x000-0x1FF, should not be used by programs.
 
 
-Registers
+Registers  
 
 |Register| Size|Description|
 |:-------|:-------|:-------|
@@ -62,14 +61,14 @@ CHIP-8 Key Mapping
 |A	|0	|B	|F|         
 
 
-Screen
+Screen  
 
 64x32-pixel monochrome display.
 Programs can also refer to sprites representing the hexadecimal digits 0-F.
 The sprites are 5 bytes, or 8x5 pixels, which should be stored in the memory area of 0x000-0x1FF.
 
 
-Instructions
+Instructions  
 
 CHIP-8 instructions are always 2 bytes long in big-endian order. The original CHIP-8 includes 35 opcodes.
 See [Opcode Table](https://en.wikipedia.org/wiki/CHIP-8#Opcode_table).
