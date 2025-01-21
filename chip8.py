@@ -24,6 +24,7 @@ class Config(object):
         self.pixel_outlines = pixel_outlines
         self.insts_per_second = insts_per_second
         self.emulator_type = Emulator_Type.CHIP8
+        self.volume = 1.0
 
 class Instruction(object):
     def __init__(self, opcode, nnn, nn, n, x, y):
@@ -83,12 +84,58 @@ def init_chip8(rom_name: str) -> Chip8:
             i += 1
     return chip8
 
-def handle_input(chip8: Chip8):
+def restart_chip8(chip8: Chip8, config: Config) -> None:
+    chip8.PC = 0x200
+    chip8.ram = [0] * (4096)
+    chip8.display = [0] * (64*32)
+    chip8.stack = [0] * (12)
+    chip8.stack_ptr = 0
+    chip8.V = [0] * (16)
+    chip8.I = 0
+    chip8.delay_timer = 0
+    chip8.sound_timer = 0
+    chip8.keypad = [0] * (16)
+    chip8.inst = Instruction(None, None, None, None, None, None)
+    font = [
+        0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+        0x20, 0x60, 0x20, 0x20, 0x70, # 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+    ]
+
+    # Load font in RAM
+    for i, byte in enumerate(font):
+        chip8.ram[i] = byte
+
+    # Load ROM in RAM from ROM entry point
+    i = 0
+    with open(chip8.rom_name, "rb") as f:
+        while (byte := f.read(1)):
+            chip8.ram[0x200 + i] = int.from_bytes(byte, byteorder="big")
+            i += 1
+    update_screen(chip8=chip8, config=config)
+
+def handle_input(chip8: Chip8, config: Config) -> None: 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             chip8.state = Emulator_State.QUIT
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE: chip8.state = Emulator_State.QUIT
+            elif event.key == pygame.K_RETURN: restart_chip8(chip8, config) # Restart Game
+            elif event.key == pygame.K_o: config.volume -= 0.1 if config.volume > 0 else config.volume; beep.set_volume(config.volume)      # decrease volume
+            elif event.key == pygame.K_p: config.volume += 0.1 if config.volume <= 1.0 else config.volume; beep.set_volume(config.volume)   # increase volume
             elif event.key == pygame.K_1: chip8.keypad[0x1] = True
             elif event.key == pygame.K_2: chip8.keypad[0x2] = True
             elif event.key == pygame.K_3: chip8.keypad[0x3] = True
@@ -130,7 +177,7 @@ def handle_input(chip8: Chip8):
             elif event.key == pygame.K_c: chip8.keypad[0xB] = False
             elif event.key == pygame.K_v: chip8.keypad[0xF] = False
             
-def run_instruction(chip8: Chip8, config: Config): 
+def run_instruction(chip8: Chip8, config: Config) -> None:
     # get current opcode to run
     chip8.inst.opcode = (chip8.ram[chip8.PC] << 8) | (chip8.ram[chip8.PC+1])
     chip8.inst.nnn, chip8.inst.nn, chip8.inst.n = (chip8.inst.opcode & 0x0FFF), (chip8.inst.opcode & 0x0FF), (chip8.inst.opcode & 0x0F)
@@ -337,7 +384,7 @@ def run_instruction(chip8: Chip8, config: Config):
                             chip8.I += 1
                         else: chip8.V[i] = chip8.ram[chip8.I + i]
                 
-def update_screen(chip8: Chip8, config: Config): 
+def update_screen(chip8: Chip8, config: Config) -> None: 
     rect = pygame.Rect(0, 0, config.scale_factor, config.scale_factor)
 
     fg_r = (config.fg_color >> 24) & 0xFF
@@ -359,7 +406,7 @@ def update_screen(chip8: Chip8, config: Config):
             if config.pixel_outlines: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect, 2)
         else: pygame.draw.rect(screen, (bg_r, bg_g, bg_b, bg_a), rect)
 
-def update_timer(chip8: Chip8):
+def update_timer(chip8: Chip8) -> None:
     if chip8.delay_timer > 0: chip8.delay_timer -= 1
     if chip8.sound_timer > 0:
         chip8.sound_timer -= 1
@@ -375,7 +422,7 @@ if __name__ == '__main__':
     pygame.init()
     pygame.mixer.pre_init(44100, -16, 1, 2048)
     beep = pygame.mixer.Sound('./sound/a.ogg')
-    beep.set_volume(1.0)
+    beep.set_volume(config.volume)
     start_time = pygame.time.get_ticks()
     screen = pygame.display.set_mode((config.window_width*config.scale_factor, config.window_height*config.scale_factor))
     clock = pygame.time.Clock()
@@ -383,14 +430,14 @@ if __name__ == '__main__':
     random.seed(time.time())
 
     while chip8.state != Emulator_State.QUIT:
-        handle_input(chip8)
+        handle_input(chip8, config)
         for i in range(config.insts_per_second // 60):
             run_instruction(chip8, config)
         end_time = pygame.time.get_ticks() - start_time
-        screen.fill("black")  
+        # screen.fill("black")  
         delta_time = ((end_time - start_time) * 1000.0) / pygame.time.get_ticks()
         pygame.time.delay(int(16.67 - delta_time if (16.67 > delta_time) else 0))
         update_screen(chip8, config)
-        pygame.display.flip()
         update_timer(chip8)
+        pygame.display.flip()
         clock.tick(60)
