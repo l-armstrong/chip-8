@@ -1,24 +1,36 @@
-# chip-8
+# Chip-8 Emulator
 
 
-CHIP-8 was created by developed by Joseph Weisbecker for the COSMAC VIP microcomputer.
+The [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator/vm/interpreter was created by developed by Joseph Weisbecker for the COSMAC VIP microcomputer. The emulator is designed to run simple video games on early microcomputers. With a relatively small [instruction set](https://en.wikipedia.org/wiki/Instruction_set_architecture), the emulator is easy to understand, and a complete joy to implement. 
 
-Playable games in the browser using this emulator: 
+Games available to play in the browser using this emulator: 
 - [tetris](https://larmstrong.itch.io/tetris)
 - [pong](https://larmstrong.itch.io/pong)
 - [breakout](https://larmstrong.itch.io/breakout)
 
+
+## Table of Contents
+- [Dependencies](#Dependencies)
+- [Usage](#Usage)
+- [Key Mapping](#KeyMapping)
+- [Virtual Machine Spec](#Spec)
+- [Credits](#Credits)
+- [License](#License)
+
+
+## Dependencies
 dependencies: [pygame](https://pypi.org/project/pygame/)
 ```console
 pip install pygame
 ```
 
-usage
+## Usage
 ```console
 python3 chip8.py <rom path>
 ```
 
-My Key Mapping (QWERTY)          
+## Key Mapping 
+
 | | | | |
 |:--|:--|:--|:--|
 |1	|2	|3	|4|
@@ -26,12 +38,12 @@ My Key Mapping (QWERTY)
 |a	|s	|d	|f|
 |z	|x	|c	|v|
 
-RESTART Game: ENTER  
-Decrease Volume: o  
-Increase Volume: p  
+Restart Game: ENTER  
+Decrease Volume: O 
+Increase Volume: P  
 
 
-Virtual Machine Spec  
+## Virtual Machine Spec
 
 Memory  
 
@@ -72,3 +84,9 @@ Instructions
 
 CHIP-8 instructions are always 2 bytes long in big-endian order. The original CHIP-8 includes 35 opcodes.
 See [Opcode Table](https://en.wikipedia.org/wiki/CHIP-8#Opcode_table).
+
+
+## Credits
+This project would not have have been possible without the following resource: 
+- [Cowgod's Chip-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
+
